@@ -1,4 +1,5 @@
 import Image from "next/image";
+import ConnectButton from "./components/ConnectButton";
 
 export default function Home() {
   return (
@@ -58,6 +59,9 @@ export default function Home() {
           >
             Documentation
           </a>
+          <div className="mt-8">
+            <ConnectButton />
+          </div>
         </div>
       </main>
     </div>
