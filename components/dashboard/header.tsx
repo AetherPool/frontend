@@ -98,9 +98,6 @@ export function Header({
                 </button>
               );
             })}
-            <div className="px-4">
-              <ConnectButton />
-            </div>
           </nav>
         )}
       </div>

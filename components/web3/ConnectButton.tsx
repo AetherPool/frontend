@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useAccount, useDisconnect, useConnect } from "wagmi";
 import { Wallet, LogOut, Repeat, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { modal } from "@/context";
 import { networks } from "@/config";
 
 /**
@@ -40,11 +39,7 @@ export default function ConnectButton() {
   const handleOpen = async () => {
     try {
       setLoading(true);
-      if (modal && typeof (modal as any).open === "function") {
-        (modal as any).open();
-        return;
-      }
-
+      // Prefer a globally-exposed modal to avoid importing context which may throw
       const win: any = typeof window !== "undefined" ? window : undefined;
       const candidate = win?.__REOWN_MODAL__ ?? win?.modal ?? undefined;
       if (candidate && typeof candidate.open === "function") {
@@ -136,10 +131,11 @@ export default function ConnectButton() {
 
               <button
                 className="w-full text-left px-4 py-2 text-sm hover:bg-slate-800 flex items-center gap-2"
-                onClick={() => {
+                  onClick={() => {
                   try {
-                    if (modal && typeof (modal as any).open === "function") (modal as any).open();
-                    else if ((window as any).__REOWN_MODAL__ && typeof (window as any).__REOWN_MODAL__.open === "function") (window as any).__REOWN_MODAL__.open();
+                    const win: any = typeof window !== "undefined" ? window : undefined;
+                    const candidate = win?.__REOWN_MODAL__ ?? win?.modal ?? undefined;
+                    if (candidate && typeof candidate.open === "function") candidate.open();
                   } catch (e) {
                     // eslint-disable-next-line no-console
                     console.error(e);

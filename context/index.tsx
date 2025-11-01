@@ -6,7 +6,6 @@ import { createAppKit } from "@reown/appkit/react";
 import { baseSepolia, mainnet } from "@reown/appkit/networks";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
-import { useEffect } from "react";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -35,7 +34,7 @@ export const modal = projectId
       defaultNetwork: baseSepolia,
       metadata: metadata,
       features: {
-        analytics: true,
+        analytics: true, // Optional - defaults to your Cloud configuration
       },
     })
   : ({} as any);

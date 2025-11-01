@@ -3,14 +3,15 @@ import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { baseSepolia, mainnet } from "@reown/appkit/networks";
 
 // Get projectId from https://dashboard.reown.com
-// Prefer NEXT_PUBLIC_PROJECT_ID for client-side usage; fall back to PROJECT_ID for server usage
-export const projectId = process.env.NEXT_PUBLIC_PROJECT_ID ?? process.env.PROJECT_ID ?? "";
+// Prefer NEXT_PUBLIC_PROJECT_ID for client-side usage; fall back to WALLET_CONNECT_PROJECT_ID or PROJECT_ID for server usage
+export const projectId =
+  process.env.NEXT_PUBLIC_PROJECT_ID ?? process.env.WALLET_CONNECT_PROJECT_ID ?? process.env.PROJECT_ID ?? "";
 
 if (!projectId) {
   // Avoid throwing during build/dev to keep the app previewable without env vars.
   // Developers should set NEXT_PUBLIC_PROJECT_ID in .env.local for full wallet functionality.
   // eslint-disable-next-line no-console
-  console.warn("NEXT_PUBLIC_PROJECT_ID (or PROJECT_ID) is not defined. Wallet modal will be disabled.");
+  console.warn("NEXT_PUBLIC_PROJECT_ID (or WALLET_CONNECT_PROJECT_ID / PROJECT_ID) is not defined. Wallet modal will be disabled.");
 }
 
 export const networks = [baseSepolia, mainnet];

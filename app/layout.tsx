@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { headers } from "next/headers";
 import ContextProvider from "@/context";
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -14,16 +15,28 @@ export const metadata: Metadata = {
   generator: "v0.app",
 };
 
-export default function RootLayout({
+async function getHeaders() {
+  try {
+    const headersList = await headers();
+    return headersList.get("cookie") ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieHeader = await getHeaders();
+
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {/* Wrap children with ContextProvider so wagmi/AppKit are available when configured */}
-        <ContextProvider cookies={null}>{children}</ContextProvider>
+        <ContextProvider cookies={cookieHeader}>
+          {children}
+        </ContextProvider>
         <Analytics />
       </body>
     </html>
