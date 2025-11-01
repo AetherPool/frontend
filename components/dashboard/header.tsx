@@ -1,5 +1,6 @@
 "use client";
 import { Droplets, Menu, X } from "lucide-react";
+import ConnectButton from "@/components/web3/ConnectButton";
 
 interface HeaderProps {
   activeTab: string;
@@ -56,6 +57,11 @@ export function Header({
             })}
           </nav>
 
+          {/* Wallet / Actions */}
+          <div className="hidden md:flex items-center gap-3">
+            <ConnectButton />
+          </div>
+
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -92,6 +98,9 @@ export function Header({
                 </button>
               );
             })}
+            <div className="px-4">
+              <ConnectButton />
+            </div>
           </nav>
         )}
       </div>

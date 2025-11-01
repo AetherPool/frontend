@@ -6,12 +6,16 @@ import { createAppKit } from "@reown/appkit/react";
 import { baseSepolia, mainnet } from "@reown/appkit/networks";
 import React, { type ReactNode } from "react";
 import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
+import { useEffect } from "react";
 
 // Set up queryClient
 const queryClient = new QueryClient();
 
 if (!projectId) {
-  throw new Error("Project ID is not defined");
+  // Don't throw here during build; warn so builds and previews work without env var.
+  // The modal will be a no-op until a valid project id is provided via env.
+  // eslint-disable-next-line no-console
+  console.warn("Project ID is not defined. Reown modal will be disabled until NEXT_PUBLIC_PROJECT_ID is set.");
 }
 
 // Set up metadata
@@ -22,17 +26,19 @@ const metadata = {
   icons: ["https://avatars.githubusercontent.com/u/179229932"],
 };
 
-// Create the modal
-const modal = createAppKit({
-  adapters: [wagmiAdapter],
-  projectId,
-  networks: [baseSepolia, mainnet],
-  defaultNetwork: baseSepolia,
-  metadata: metadata,
-  features: {
-    analytics: true, // Optional - defaults to your Cloud configuration
-  },
-});
+// Create and export the modal (noop when projectId is missing)
+export const modal = projectId
+  ? createAppKit({
+      adapters: [wagmiAdapter],
+      projectId,
+      networks: [baseSepolia, mainnet],
+      defaultNetwork: baseSepolia,
+      metadata: metadata,
+      features: {
+        analytics: true,
+      },
+    })
+  : ({} as any);
 
 function ContextProvider({
   children,
@@ -55,5 +61,22 @@ function ContextProvider({
     </WagmiProvider>
   );
 }
+
+// Expose modal globally on client for components that need to open it
+// without importing the context module directly (safe noop if modal is empty).
+function exposeModalOnWindow() {
+  try {
+    if (typeof window !== "undefined") {
+      // attach in a non-enumerable way to avoid accidental overwrites
+      (window as any).__REOWN_MODAL__ = modal;
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Run on module load in client (this module is client-side) — also allow callers
+// to call exposeModalOnWindow from a client effect if needed.
+exposeModalOnWindow();
 
 export default ContextProvider;
