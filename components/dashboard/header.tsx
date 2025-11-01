@@ -59,7 +59,8 @@ export function Header({
 
           {/* Wallet / Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <ConnectButton />
+            {/* <ConnectButton /> */}
+            <appkit-button />
           </div>
 
           {/* Mobile Menu Toggle */}
