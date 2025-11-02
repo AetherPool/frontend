@@ -32,6 +32,11 @@ const modal = createAppKit({
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
   },
+  // allWallets: "SHOW",
+  // chainImages: {
+  //   // baseSepolia: "https://seeklogo.com/images/E/ethereum-logo-EC6CDBA0A4-seeklogo.com.png",
+  //   // mainnet: "https://seeklogo.com/images/E/ethereum-logo-EC6CDBA0A4-seeklogo.com.png",
+  // },
 });
 
 function ContextProvider({
