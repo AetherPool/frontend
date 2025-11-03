@@ -23,20 +23,21 @@ const metadata = {
 };
 
 // Create the modal
-const modal = createAppKit({
+export const modal = createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: [baseSepolia, mainnet],
   defaultNetwork: baseSepolia,
   metadata: metadata,
   features: {
-    analytics: true, // Optional - defaults to your Cloud configuration
+    analytics: false, // Optional - defaults to your Cloud configuration
   },
-  // allWallets: "SHOW",
-  // chainImages: {
-  //   // baseSepolia: "https://seeklogo.com/images/E/ethereum-logo-EC6CDBA0A4-seeklogo.com.png",
-  //   // mainnet: "https://seeklogo.com/images/E/ethereum-logo-EC6CDBA0A4-seeklogo.com.png",
-  // },
+  allWallets: "SHOW",
+  themeMode: "dark",
+  themeVariables: {
+    "--w3m-accent": "#3b82f6",
+    "--w3m-border-radius-master": "8px",
+  },
 });
 
 function ContextProvider({

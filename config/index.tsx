@@ -1,4 +1,4 @@
-import { cookieStorage, createStorage, http } from "@wagmi/core";
+import { cookieStorage, createStorage } from "@wagmi/core"; // http removed
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { baseSepolia, mainnet } from "@reown/appkit/networks";
 
