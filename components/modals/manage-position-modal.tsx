@@ -21,6 +21,17 @@ interface ManagePositionModalProps {
     liquidity: string;
     fees: string;
     apy: string;
+    tokenA: {
+      symbol: string;
+      amount: string;
+      price?: number;
+    };
+    tokenB: {
+      symbol: string;
+      amount: string;
+      price?: number;
+    };
+    totalValue: string;
   };
 }
 
@@ -33,8 +44,45 @@ export function ManagePositionModal({
     "overview"
   );
   const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustByToken, setAdjustByToken] = useState<"tokenA" | "tokenB">(
+    "tokenA"
+  );
+  const [tokenAAmount, setTokenAAmount] = useState("");
+  const [tokenBAmount, setTokenBAmount] = useState("");
 
   if (!position) return null;
+
+  const handleTokenAChange = (value: string) => {
+    setTokenAAmount(value);
+    if (value && position.tokenA.price && position.tokenB.price) {
+      const tokenBValue =
+        (Number.parseFloat(value) * position.tokenA.price) /
+        position.tokenB.price;
+      setTokenBAmount(tokenBValue.toFixed(6));
+    }
+  };
+
+  const handleTokenBChange = (value: string) => {
+    setTokenBAmount(value);
+    if (value && position.tokenA.price && position.tokenB.price) {
+      const tokenAValue =
+        (Number.parseFloat(value) * position.tokenB.price) /
+        position.tokenA.price;
+      setTokenAAmount(tokenAValue.toFixed(6));
+    }
+  };
+
+  const calculateNewPosition = () => {
+    const newTokenA = (
+      Number.parseFloat(position.tokenA.amount) +
+      Number.parseFloat(tokenAAmount || "0")
+    ).toFixed(6);
+    const newTokenB = (
+      Number.parseFloat(position.tokenB.amount) +
+      Number.parseFloat(tokenBAmount || "0")
+    ).toFixed(6);
+    return { newTokenA, newTokenB };
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,35 +90,30 @@ export function ManagePositionModal({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
             <Settings className="w-6 h-6 text-purple-400" />
-            Manage Position - {position.pair}
+            Manage {position.pair} Position
           </DialogTitle>
         </DialogHeader>
 
         {action === "overview" && (
           <div className="space-y-6">
-            {/* Position stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-gray-400 text-sm mb-2">Liquidity</p>
-                <p className="text-2xl font-bold text-white">
-                  {position.liquidity}
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+              <p className="text-gray-400 text-sm mb-3 font-medium">
+                Current Position
+              </p>
+              <div className="space-y-2">
+                <p className="text-white font-semibold">
+                  • {position.tokenA.amount} {position.tokenA.symbol} +{" "}
+                  {position.tokenB.amount} {position.tokenB.symbol}
                 </p>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-gray-400 text-sm mb-2">Fees Earned</p>
-                <p className="text-2xl font-bold text-green-400">
-                  {position.fees}
+                <p className="text-gray-300 text-sm">
+                  • Liquidity: {position.liquidity} units
                 </p>
-              </div>
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <p className="text-gray-400 text-sm mb-2">APY</p>
-                <p className="text-2xl font-bold text-cyan-400">
-                  {position.apy}
+                <p className="text-cyan-400 font-semibold">
+                  • Value: {position.totalValue}
                 </p>
               </div>
             </div>
 
-            {/* Info section */}
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex gap-3">
               <Lock className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
               <p className="text-sm text-gray-300">
@@ -79,7 +122,6 @@ export function ManagePositionModal({
               </p>
             </div>
 
-            {/* Action buttons */}
             <div className="grid grid-cols-2 gap-3">
               <Button
                 onClick={() => setAction("adjust")}
@@ -108,35 +150,100 @@ export function ManagePositionModal({
 
         {action === "adjust" && (
           <div className="space-y-6">
-            <div>
-              <Label className="text-gray-300 mb-2 block">
-                Liquidity Change Amount
-              </Label>
-              <Input
-                placeholder="Enter amount to add/remove"
-                value={adjustAmount}
-                onChange={(e) => setAdjustAmount(e.target.value)}
-                className="bg-slate-800/50 border border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-400"
-              />
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+              <p className="text-gray-400 text-sm mb-3 font-medium">
+                Adjust {position.pair} Position
+              </p>
+              <div className="space-y-2">
+                <p className="text-white font-semibold">
+                  Current: {position.tokenA.amount} {position.tokenA.symbol} +{" "}
+                  {position.tokenB.amount} {position.tokenB.symbol}
+                </p>
+                <p className="text-gray-300 text-sm">
+                  Value: {position.totalValue}
+                </p>
+              </div>
             </div>
 
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-              <p className="text-sm text-gray-300">
-                You can increase or decrease your liquidity. Positive values add
-                liquidity, negative values remove it.
+            <div className="space-y-4">
+              <p className="text-gray-300 text-sm font-medium">
+                Add tokens (enter either field, the other auto-computes):
               </p>
+
+              <div className="space-y-2">
+                <Label className="text-gray-300">
+                  {position.tokenA.symbol} Amount
+                </Label>
+                <Input
+                  type="number"
+                  placeholder={`Enter ${position.tokenA.symbol} amount`}
+                  value={tokenAAmount}
+                  onChange={(e) => handleTokenAChange(e.target.value)}
+                  className="bg-slate-800/50 border border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-400"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-gray-300">
+                  {position.tokenB.symbol} Amount
+                </Label>
+                <Input
+                  type="number"
+                  placeholder={`Enter ${position.tokenB.symbol} amount`}
+                  value={tokenBAmount}
+                  onChange={(e) => handleTokenBChange(e.target.value)}
+                  className="bg-slate-800/50 border border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-400"
+                />
+              </div>
             </div>
+
+            {(tokenAAmount || tokenBAmount) && (
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 space-y-3">
+                <p className="text-sm text-gray-300 font-medium">
+                  You will deposit:
+                </p>
+                <div className="space-y-1">
+                  <p className="text-white font-semibold">
+                    • {tokenAAmount || "0"} {position.tokenA.symbol} (approve)
+                  </p>
+                  <p className="text-white font-semibold">
+                    • {tokenBAmount || "0"} {position.tokenB.symbol} (approve)
+                  </p>
+                </div>
+                <hr className="border-purple-500/20 my-3" />
+                {(() => {
+                  const newPos = calculateNewPosition();
+                  return (
+                    <>
+                      <p className="text-sm text-gray-300 font-medium">
+                        New position will be:
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-cyan-400 font-semibold">
+                          • {newPos.newTokenA} {position.tokenA.symbol} +{" "}
+                          {newPos.newTokenB} {position.tokenB.symbol}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Button
-                onClick={() => setAction("overview")}
+                onClick={() => {
+                  setAction("overview");
+                  setTokenAAmount("");
+                  setTokenBAmount("");
+                }}
                 variant="outline"
-                className="flex-1 border-slate-700 text-gray-300"
+                className="flex-1 border-slate-700 text-gray-300 hover:bg-slate-800"
               >
-                Back
+                Cancel
               </Button>
-              <Button className="flex-1 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white">
-                Apply Changes
+              <Button className="flex-1 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-medium">
+                Confirm Deposit
               </Button>
             </div>
           </div>
@@ -154,7 +261,11 @@ export function ManagePositionModal({
             <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
               <p className="text-sm text-gray-400 mb-2">You will receive:</p>
               <p className="text-xl font-bold text-white">
-                {position.liquidity} value in underlying tokens
+                {position.tokenA.amount} {position.tokenA.symbol} +{" "}
+                {position.tokenB.amount} {position.tokenB.symbol}
+              </p>
+              <p className="text-cyan-400 text-sm mt-2">
+                ≈ {position.totalValue}
               </p>
             </div>
 
@@ -162,11 +273,11 @@ export function ManagePositionModal({
               <Button
                 onClick={() => setAction("overview")}
                 variant="outline"
-                className="flex-1 border-slate-700 text-gray-300"
+                className="flex-1 border-slate-700 text-gray-300 hover:bg-slate-800"
               >
                 Cancel
               </Button>
-              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium">
                 Remove Position
               </Button>
             </div>

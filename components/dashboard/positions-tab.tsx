@@ -12,6 +12,15 @@ interface Position {
   liquidity: string;
   fees: string;
   apy: string;
+  tokenA: {
+    symbol: string;
+    amount: string;
+  };
+  tokenB: {
+    symbol: string;
+    amount: string;
+  };
+  totalValue: string;
 }
 
 interface PositionsTabProps {
@@ -68,9 +77,19 @@ export function PositionsTab({ positions }: PositionsTabProps) {
 
               <div className="grid grid-cols-3 gap-6">
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Liquidity</div>
-                  <div className="font-semibold text-white">
-                    {position.liquidity}
+                  <div className="text-xs text-gray-400 mb-1">
+                    Your Liquidity
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-semibold text-white text-sm">
+                      {position.tokenA.amount} {position.tokenA.symbol}
+                    </div>
+                    <div className="font-semibold text-white text-sm">
+                      {position.tokenB.amount} {position.tokenB.symbol}
+                    </div>
+                    <div className="text-xs text-cyan-400 mt-2">
+                      ≈ {position.totalValue}
+                    </div>
                   </div>
                 </div>
                 <div>

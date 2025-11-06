@@ -28,6 +28,17 @@ export function AetherDashboard() {
       liquidity: "$50,000",
       fees: "$234",
       apy: "12.5%",
+      tokenA: {
+        symbol: "ETH",
+        amount: "2.5",
+        price: 2000,
+      },
+      tokenB: {
+        symbol: "USDC",
+        amount: "5000",
+        price: 1,
+      },
+      totalValue: "$55,000",
     },
     {
       id: 2,
@@ -36,6 +47,17 @@ export function AetherDashboard() {
       liquidity: "$30,000",
       fees: "$156",
       apy: "18.2%",
+      tokenA: {
+        symbol: "WBTC",
+        amount: "0.8",
+        price: 42000,
+      },
+      tokenB: {
+        symbol: "ETH",
+        amount: "15",
+        price: 2000,
+      },
+      totalValue: "$33,600",
     },
     {
       id: 3,
@@ -44,6 +66,17 @@ export function AetherDashboard() {
       liquidity: "$75,000",
       fees: "$89",
       apy: "8.7%",
+      tokenA: {
+        symbol: "DAI",
+        amount: "75000",
+        price: 1,
+      },
+      tokenB: {
+        symbol: "USDC",
+        amount: "75000",
+        price: 1,
+      },
+      totalValue: "$150,000",
     },
   ];
 
