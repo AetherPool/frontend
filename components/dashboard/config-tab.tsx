@@ -70,7 +70,7 @@ export function ConfigTab() {
               }
               className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, rgb(34, 197, 94) 0%, rgb(34, 197, 94) ${hedgePercentage}%, rgb(30, 41, 59) ${hedgePercentage}%, rgb(30, 41, 59) 100%)`,
+                background: `linear-linear(to right, rgb(34, 197, 94) 0%, rgb(34, 197, 94) ${hedgePercentage}%, rgb(30, 41, 59) ${hedgePercentage}%, rgb(30, 41, 59) 100%)`,
               }}
             />
             <div className="flex justify-between text-xs text-gray-500 mt-2">

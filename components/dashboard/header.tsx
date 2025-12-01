@@ -1,13 +1,17 @@
 "use client";
-import { Droplets, Menu, X } from "lucide-react";
-import ConnectButton from "@/components/web3/ConnectButton";
+import { Droplets, Menu, X, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
-  tabs: Array<{ id: string; label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }>;
+  tabs: Array<{
+    id: string;
+    label: string;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  }>;
 }
 
 export function Header({
@@ -22,17 +26,26 @@ export function Header({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo and Branding */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-linear-to-br from-primary via-accent to-primary rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
-              <Droplets className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="hidden sm:block min-w-0">
-              <h1 className="text-lg font-bold text-foreground leading-tight">
-                AetherPool
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Privacy-First JIT Liquidity
-              </p>
+          <div className="flex items-center gap-4 min-w-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="hidden sm:inline text-sm font-medium">Home</span>
+            </Link>
+            <div className="w-px h-8 bg-border/50 hidden sm:block" />
+            {/* End of change */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-linear-to-br from-primary via-accent to-primary rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
+                <Droplets className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div className="hidden sm:block min-w-0">
+                <h1 className="text-lg font-bold text-foreground leading-tight">
+                  AetherPool
+                </h1>
+                <p className="text-xs text-muted-foreground">Dashboard</p>
+              </div>
             </div>
           </div>
 
@@ -57,12 +70,6 @@ export function Header({
             })}
           </nav>
 
-          {/* Wallet / Actions */}
-          <div className="hidden md:flex items-center gap-3">
-            {/* <ConnectButton /> */}
-            <appkit-button />
-          </div>
-
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -79,6 +86,15 @@ export function Header({
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t border-border/40 space-y-1 mb-4">
+            <Link
+              href="/"
+              className="flex items-center gap-2 w-full px-4 py-3 rounded-lg transition-all font-medium text-muted-foreground hover:text-foreground hover:bg-card/50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Home</span>
+            </Link>
+            <div className="border-t border-border/40 my-2" />
+            {/* End of change */}
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
