@@ -11,13 +11,13 @@ interface Token {
 }
 
 const TOKENS: Token[] = [
-  { symbol: "ETH", name: "Ethereum", balance: "10.0", price: 2000 },
   {
     symbol: "cNGN",
     name: "cNGN Stablecoin",
     balance: "50000.0",
     price: 0.00065,
   },
+  { symbol: "USDC", name: "USD Coin", balance: "1000.0", price: 1.0 },
 ];
 
 export function SwapWidget() {

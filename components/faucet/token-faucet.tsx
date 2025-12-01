@@ -12,8 +12,8 @@ interface Token {
 }
 
 const FAUCET_TOKENS: Token[] = [
-  { symbol: "ETH", name: "Mock Ethereum", claimAmount: "10.0", icon: "⟠" },
   { symbol: "cNGN", name: "cNGN Stablecoin", claimAmount: "50,000", icon: "₦" },
+  { symbol: "USDC", name: "USD Coin", claimAmount: "1,000", icon: "$" },
 ];
 
 export function TokenFaucet() {
