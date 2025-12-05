@@ -108,7 +108,7 @@ export function SwapWidget() {
       {/* From Token */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-2">
         <div className="flex justify-between mb-2">
-          <span className="text-sm text-gray-400">From</span>
+          <span className="text-sm text-gray-400">Sell</span>
           <span className="text-sm text-gray-400">
             Balance: {fromToken.balance}
           </span>
@@ -175,7 +175,7 @@ export function SwapWidget() {
       {/* To Token */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mt-2">
         <div className="flex justify-between mb-2">
-          <span className="text-sm text-gray-400">To</span>
+          <span className="text-sm text-gray-400">Buy</span>
           <span className="text-sm text-gray-400">
             Balance: {toToken.balance}
           </span>
