@@ -12,8 +12,8 @@ interface Token {
 }
 
 const FAUCET_TOKENS: Token[] = [
-  { symbol: "cNGN", name: "cNGN Stablecoin", claimAmount: "50,000", icon: "₦" },
-  { symbol: "USDC", name: "USD Coin", claimAmount: "1,000", icon: "$" },
+  { symbol: "FYN", name: "FYN Token", claimAmount: "10,000", icon: "F" },
+  { symbol: "QRT", name: "QRT Token", claimAmount: "10,000", icon: "Q" },
 ];
 
 export function TokenFaucet() {
@@ -26,7 +26,6 @@ export function TokenFaucet() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     setClaimed((prev) => [...prev, symbol]);
     setClaiming(null);
-    console.log("[v0] Claimed:", symbol);
   };
 
   return (
@@ -50,7 +49,7 @@ export function TokenFaucet() {
               className="flex items-center justify-between p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:border-slate-600 transition-all"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-linear-to-br from-cyan-500/20 to-purple-600/20 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-full bg-linear-to-br from-cyan-500/20 to-purple-600/20 flex items-center justify-center text-xl font-bold text-cyan-400">
                   {token.icon}
                 </div>
                 <div>

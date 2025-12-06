@@ -22,13 +22,8 @@ interface Token {
 }
 
 const TOKENS: Token[] = [
-  {
-    symbol: "cNGN",
-    name: "cNGN Stablecoin",
-    balance: "50000.0",
-    price: 0.00065,
-  },
-  { symbol: "USDC", name: "USD Coin", balance: "1000.0", price: 1.0 },
+  { symbol: "FYN", name: "FYN Token", balance: "10000.0", price: 1.0 },
+  { symbol: "QRT", name: "QRT Token", balance: "10000.0", price: 1.0 },
 ];
 
 interface AddPositionModalProps {
@@ -193,7 +188,6 @@ export function AddPositionModal({
                         onClick={() => {
                           setTokenA(token);
                           setShowTokenADropdown(false);
-                          // Recalculate amounts with new token
                           if (amountA) {
                             const newRatio = token.price / tokenB.price;
                             setAmountB((Number(amountA) * newRatio).toFixed(6));
@@ -212,9 +206,6 @@ export function AddPositionModal({
                 )}
               </div>
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              ~${amountA ? (Number(amountA) * tokenA.price).toFixed(2) : "0.00"}
-            </div>
           </div>
 
           {/* Price Ratio Display (Non-editable) */}
@@ -222,7 +213,7 @@ export function AddPositionModal({
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Price Ratio</span>
               <span className="text-white font-medium">
-                1 {tokenA.symbol} = {priceRatio.toFixed(6)} {tokenB.symbol}
+                1 {tokenA.symbol} = {priceRatio.toFixed(4)} {tokenB.symbol}
               </span>
             </div>
           </div>
@@ -270,7 +261,6 @@ export function AddPositionModal({
                         onClick={() => {
                           setTokenB(token);
                           setShowTokenBDropdown(false);
-                          // Recalculate amounts with new token
                           if (amountB) {
                             const newRatio = tokenA.price / token.price;
                             setAmountA((Number(amountB) / newRatio).toFixed(6));
@@ -288,9 +278,6 @@ export function AddPositionModal({
                   </div>
                 )}
               </div>
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              ~${amountB ? (Number(amountB) * tokenB.price).toFixed(2) : "0.00"}
             </div>
           </div>
 

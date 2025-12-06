@@ -11,13 +11,8 @@ interface Token {
 }
 
 const TOKENS: Token[] = [
-  {
-    symbol: "cNGN",
-    name: "cNGN Stablecoin",
-    balance: "50000.0",
-    price: 0.00065,
-  },
-  { symbol: "USDC", name: "USD Coin", balance: "1000.0", price: 1.0 },
+  { symbol: "FYN", name: "FYN Token", balance: "10000.0", price: 1.0 },
+  { symbol: "QRT", name: "QRT Token", balance: "10000.0", price: 1.0 },
 ];
 
 interface AddLiquidityWidgetProps {
@@ -92,6 +87,7 @@ export function AddLiquidityWidget({
   const totalValue =
     (Number(amountA) || 0) * tokenA.price +
     (Number(amountB) || 0) * tokenB.price;
+  console.log("Total Value:", totalValue);
 
   return (
     <div className="bg-linear-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 w-full max-w-md overflow-visible">
@@ -190,9 +186,6 @@ export function AddLiquidityWidget({
             )}
           </div>
         </div>
-        <div className="text-sm text-gray-500 mt-1">
-          ~${amountA ? (Number(amountA) * tokenA.price).toFixed(2) : "0.00"}
-        </div>
       </div>
 
       {/* Plus Icon */}
@@ -256,9 +249,6 @@ export function AddLiquidityWidget({
             )}
           </div>
         </div>
-        <div className="text-sm text-gray-500 mt-1">
-          ~${amountB ? (Number(amountB) * tokenB.price).toFixed(2) : "0.00"}
-        </div>
       </div>
 
       {/* Price Range */}
@@ -300,7 +290,8 @@ export function AddLiquidityWidget({
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Total Value</span>
             <span className="text-white font-medium">
-              ${totalValue.toFixed(2)}
+              {Number(amountA || 0).toFixed(2)} {tokenA.symbol} +{" "}
+              {Number(amountB || 0).toFixed(2)} {tokenB.symbol}
             </span>
           </div>
         </div>
