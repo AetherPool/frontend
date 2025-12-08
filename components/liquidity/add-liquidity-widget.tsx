@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Plus, Zap, Droplets, ArrowRight, ChevronDown } from "lucide-react";
+import { Plus, Zap, Droplets, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Token {
@@ -10,10 +10,18 @@ interface Token {
   price: number;
 }
 
-const TOKENS: Token[] = [
-  { symbol: "FYN", name: "FYN Token", balance: "10000.0", price: 1.0 },
-  { symbol: "QRT", name: "QRT Token", balance: "10000.0", price: 1.0 },
-];
+const TOKEN_A: Token = {
+  symbol: "QRT",
+  name: "QRT Token",
+  balance: "10000.0",
+  price: 1.0,
+};
+const TOKEN_B: Token = {
+  symbol: "FYN",
+  name: "FYN Token",
+  balance: "10000.0",
+  price: 1.0,
+};
 
 interface AddLiquidityWidgetProps {
   onJITConfigRequired?: (positionData: {
@@ -29,18 +37,14 @@ interface AddLiquidityWidgetProps {
 export function AddLiquidityWidget({
   onJITConfigRequired,
 }: AddLiquidityWidgetProps) {
-  const [tokenA, setTokenA] = useState<Token>(TOKENS[0]);
-  const [tokenB, setTokenB] = useState<Token>(TOKENS[1]);
   const [amountA, setAmountA] = useState("");
   const [amountB, setAmountB] = useState("");
   const [tickLower, setTickLower] = useState("");
   const [tickUpper, setTickUpper] = useState("");
   const [liquidityType, setLiquidityType] = useState<"jit" | "passive">("jit");
   const [lastEdited, setLastEdited] = useState<"A" | "B" | null>(null);
-  const [showTokenADropdown, setShowTokenADropdown] = useState(false);
-  const [showTokenBDropdown, setShowTokenBDropdown] = useState(false);
 
-  const priceRatio = tokenA.price / tokenB.price;
+  const priceRatio = TOKEN_A.price / TOKEN_B.price;
 
   const handleAmountAChange = (value: string) => {
     setAmountA(value);
@@ -67,8 +71,8 @@ export function AddLiquidityWidget({
   const handleAddLiquidity = () => {
     if (liquidityType === "jit" && onJITConfigRequired) {
       onJITConfigRequired({
-        tokenA,
-        tokenB,
+        tokenA: TOKEN_A,
+        tokenB: TOKEN_B,
         amountA,
         amountB,
         tickLower,
@@ -76,18 +80,13 @@ export function AddLiquidityWidget({
       });
     } else {
       console.log("Adding passive liquidity:", {
-        tokenA,
-        tokenB,
+        tokenA: TOKEN_A,
+        tokenB: TOKEN_B,
         amountA,
         amountB,
       });
     }
   };
-
-  const totalValue =
-    (Number(amountA) || 0) * tokenA.price +
-    (Number(amountB) || 0) * tokenB.price;
-  console.log("Total Value:", totalValue);
 
   return (
     <div className="bg-linear-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 w-full max-w-md overflow-visible">
@@ -132,7 +131,7 @@ export function AddLiquidityWidget({
         </p>
       </div>
 
-      {/* Token A Input */}
+      {/* Token A Input - Fixed to QRT */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-3">
         <div className="flex justify-between mb-2">
           <span className="text-sm text-gray-400">
@@ -142,7 +141,7 @@ export function AddLiquidityWidget({
             )}
           </span>
           <span className="text-sm text-gray-400">
-            Balance: {tokenA.balance}
+            Balance: {TOKEN_A.balance}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -153,37 +152,8 @@ export function AddLiquidityWidget({
             placeholder="0.0"
             className="flex-1 bg-transparent text-2xl text-white font-medium outline-none placeholder:text-gray-600 min-w-0"
           />
-          <div className="relative shrink-0">
-            <button
-              onClick={() => {
-                setShowTokenADropdown(!showTokenADropdown);
-                setShowTokenBDropdown(false);
-              }}
-              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors"
-            >
-              {tokenA.symbol}
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            {showTokenADropdown && (
-              <div className="absolute right-0 top-full mt-2 w-32 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
-                {TOKENS.map((token) => (
-                  <button
-                    key={token.symbol}
-                    onClick={() => {
-                      setTokenA(token);
-                      setShowTokenADropdown(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors ${
-                      tokenA.symbol === token.symbol
-                        ? "text-cyan-400 bg-slate-700/50"
-                        : "text-white"
-                    }`}
-                  >
-                    {token.symbol}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium border border-slate-600">
+            {TOKEN_A.symbol}
           </div>
         </div>
       </div>
@@ -195,7 +165,7 @@ export function AddLiquidityWidget({
         </div>
       </div>
 
-      {/* Token B Input */}
+      {/* Token B Input - Fixed to FYN */}
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mt-3">
         <div className="flex justify-between mb-2">
           <span className="text-sm text-gray-400">
@@ -205,7 +175,7 @@ export function AddLiquidityWidget({
             )}
           </span>
           <span className="text-sm text-gray-400">
-            Balance: {tokenB.balance}
+            Balance: {TOKEN_B.balance}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -216,37 +186,8 @@ export function AddLiquidityWidget({
             placeholder="0.0"
             className="flex-1 bg-transparent text-2xl text-white font-medium outline-none placeholder:text-gray-600 min-w-0"
           />
-          <div className="relative shrink-0">
-            <button
-              onClick={() => {
-                setShowTokenBDropdown(!showTokenBDropdown);
-                setShowTokenADropdown(false);
-              }}
-              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors"
-            >
-              {tokenB.symbol}
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            {showTokenBDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-32 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
-                {TOKENS.map((token) => (
-                  <button
-                    key={token.symbol}
-                    onClick={() => {
-                      setTokenB(token);
-                      setShowTokenBDropdown(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left hover:bg-slate-700 transition-colors ${
-                      tokenB.symbol === token.symbol
-                        ? "text-cyan-400 bg-slate-700/50"
-                        : "text-white"
-                    }`}
-                  >
-                    {token.symbol}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium border border-slate-600">
+            {TOKEN_B.symbol}
           </div>
         </div>
       </div>
@@ -290,8 +231,8 @@ export function AddLiquidityWidget({
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Total Value</span>
             <span className="text-white font-medium">
-              {Number(amountA || 0).toFixed(2)} {tokenA.symbol} +{" "}
-              {Number(amountB || 0).toFixed(2)} {tokenB.symbol}
+              {Number(amountA || 0).toFixed(2)} {TOKEN_A.symbol} +{" "}
+              {Number(amountB || 0).toFixed(2)} {TOKEN_B.symbol}
             </span>
           </div>
         </div>

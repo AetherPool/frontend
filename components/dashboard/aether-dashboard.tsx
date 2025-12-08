@@ -22,7 +22,7 @@ export function AetherDashboard() {
   const positions = [
     {
       id: 1,
-      pair: "FYN/QRT",
+      pair: "QRT/FYN",
       range: "0.95-1.05",
       liquidity: "$50,000",
       fees: "$234",
@@ -45,7 +45,7 @@ export function AetherDashboard() {
     },
     {
       id: 2,
-      pair: "FYN/QRT",
+      pair: "QRT/FYN",
       range: "0.98-1.02",
       liquidity: "$30,000",
       fees: "$156",
@@ -71,21 +71,21 @@ export function AetherDashboard() {
   const recentJITs = [
     {
       time: "2m ago",
-      pair: "FYN/QRT",
+      pair: "QRT/FYN",
       amount: "$25,000",
       profit: "+$127",
       status: "completed",
     },
     {
       time: "15m ago",
-      pair: "FYN/QRT",
+      pair: "QRT/FYN",
       amount: "$18,500",
       profit: "+$94",
       status: "completed",
     },
     {
       time: "1h ago",
-      pair: "FYN/QRT",
+      pair: "QRT/FYN",
       amount: "$40,000",
       profit: "+$203",
       status: "completed",
