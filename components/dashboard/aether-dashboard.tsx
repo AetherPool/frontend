@@ -28,14 +28,14 @@ export function AetherDashboard() {
       fees: "$234",
       apy: "12.5%",
       tokenA: {
-        symbol: "FYN",
+        symbol: "QRT",
         amount: "25000",
         price: 1.0,
         profit: "125",
         profitUsd: 125,
       },
       tokenB: {
-        symbol: "QRT",
+        symbol: "FYN",
         amount: "25000",
         price: 1.0,
         profit: "125",
@@ -51,14 +51,14 @@ export function AetherDashboard() {
       fees: "$156",
       apy: "18.2%",
       tokenA: {
-        symbol: "FYN",
+        symbol: "QRT",
         amount: "15000",
         price: 1.0,
         profit: "80",
         profitUsd: 80,
       },
       tokenB: {
-        symbol: "QRT",
+        symbol: "FYN",
         amount: "15000",
         price: 1.0,
         profit: "80",

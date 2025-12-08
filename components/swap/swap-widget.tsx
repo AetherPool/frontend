@@ -17,8 +17,8 @@ interface Token {
 }
 
 const TOKENS: Token[] = [
-  { symbol: "FYN", name: "FYN Token", balance: "10000.0" },
   { symbol: "QRT", name: "QRT Token", balance: "10000.0" },
+  { symbol: "FYN", name: "FYN Token", balance: "10000.0" },
 ];
 
 export function SwapWidget() {
@@ -393,7 +393,7 @@ export function SwapWidget() {
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Current Price:</span>
-              <span className="text-white">1 FYN = 1 QRT</span>
+              <span className="text-white">1 QRT = 1 FYN</span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Execution Price:</span>
