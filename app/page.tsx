@@ -14,6 +14,7 @@ import { SwapWidget } from "@/components/swap/swap-widget";
 import { AddLiquidityWidget } from "@/components/liquidity/add-liquidity-widget";
 import { TokenFaucet } from "@/components/faucet/token-faucet";
 import { JITConfigModal } from "@/components/jit-config/jit-config-modal";
+import ConnectWallet from "@/components/ConnectWallet";
 import Link from "next/link";
 
 type ActiveWidget = "swap" | "liquidity" | "faucet";
@@ -55,6 +56,11 @@ export default function Home() {
 
   const handleJITBack = () => {
     setShowJITConfig(false);
+  };
+
+  const handleWalletConnect = () => {
+    console.log("Wallet connected successfully!");
+    // Add any additional logic to run when wallet connects
   };
 
   const navItems = [
@@ -114,12 +120,10 @@ export default function Home() {
               </Link>
             </nav>
 
-            {/* Wallet Button Placeholder */}
-            <div className="hidden md:block">
-              <button className="px-4 py-2 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-medium rounded-lg transition-all">
-                Connect Wallet
-              </button>
-            </div>
+            <ConnectWallet
+              onConnect={handleWalletConnect}
+              label="Connect Wallet"
+            />
 
             {/* Mobile Menu Button */}
             <button
@@ -174,9 +178,11 @@ export default function Home() {
                   );
                 })}
               </div>
-              <button className="w-full mt-2 px-4 py-3 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-medium rounded-lg transition-all">
-                Connect Wallet
-              </button>
+              {/* Mobile ConnectWallet */}
+              <ConnectWallet
+                onConnect={handleWalletConnect}
+                label="Connect Wallet"
+              />
             </div>
           </div>
         )}
