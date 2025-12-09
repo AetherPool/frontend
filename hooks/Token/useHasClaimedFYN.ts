@@ -1,12 +1,12 @@
 "use client";
 
-import { getTokenContract } from "@/constants/contracts";
+import { getFYNTokenContract } from "@/constants/contracts";
 import { useAccount } from "@/lib/thirdweb-hooks";
 import { useEffect, useState, useCallback } from "react";
 import { readOnlyProvider } from "@/constants/providers";
 import { toast } from "sonner";
 
-const useHasClaimed = () => {
+const useHasClaimedFYN = () => {
   const { address, isConnected } = useAccount();
   const [hasClaimed, setHasClaimed] = useState<boolean | null>(null);
 
@@ -14,7 +14,7 @@ const useHasClaimed = () => {
     if (!address) return;
 
     try {
-      const contract = getTokenContract(readOnlyProvider);
+      const contract = getFYNTokenContract(readOnlyProvider);
       const resp = await contract.hasClaimed(address);
       setHasClaimed(resp);
     } catch (error) {
@@ -32,4 +32,4 @@ const useHasClaimed = () => {
   return hasClaimed;
 };
 
-export default useHasClaimed;
+export default useHasClaimedFYN;
