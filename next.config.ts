@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     QRT_TOKEN: process.env.QRT_TOKEN,
     FYN_TOKEN: process.env.FYN_TOKEN,
     HOOK: process.env.HOOK,
+    RPC_URL: process.env.RPC_URL,
   },
 };
 

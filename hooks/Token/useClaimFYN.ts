@@ -1,79 +1,62 @@
 "use client";
 
-import { useCallback } from "react";
-import { getProvider } from "@/constants/providers";
-import { isSupportedChain } from "@/constants/chain";
-import { getFYNTokenContract } from "@/constants/contracts";
+import { useActiveAccount, useActiveWalletChain } from "thirdweb/react";
+import { prepareContractCall, sendTransaction } from "thirdweb";
 import { toast } from "sonner";
-import { useChainId, useAccount } from "wagmi";
-import { useAppKitProvider, type Provider } from "@reown/appkit/react";
-import { useLoading } from "../useLoading";
-
-type ErrorWithReason = {
-  reason?: string;
-  message?: string;
-};
+import { useThirdwebContracts } from "@/constants/contracts";
+import { isSupportedChain } from "@/constants/chain";
+import { useState } from "react";
 
 const useClaimFYN = () => {
-  const chainId = useChainId();
-  const { isConnected } = useAccount();
-  const { walletProvider } = useAppKitProvider<Provider>("eip155");
-  const { isLoading, startLoading, stopLoading } = useLoading();
+  const account = useActiveAccount();
+  const chain = useActiveWalletChain();
+  const { getFYNTokenContract } = useThirdwebContracts();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const claim = useCallback(
-    async () => {
-      if (!walletProvider) {
-        toast.error(
-          "Wallet provider is not available. Please try reconnecting your wallet."
-        );
-        return;
-      }
+  const claim = async () => {
+    if (!account) {
+      toast.warning("Please connect your wallet first.");
+      return false;
+    }
+    if (!chain || !isSupportedChain(chain.id)) {
+      toast.warning(
+        "Unsupported network. Please switch to the correct network."
+      );
+      return false;
+    }
 
-      if (!isConnected) {
-        toast.warning("Please connect your wallet first.");
-        return;
-      }
-      if (!isSupportedChain(chainId)) {
-        toast.warning(
-          "Unsupported network. Please switch to the correct network."
-        );
-        return;
-      }
+    setIsLoading(true);
 
-      const readWriteProvider = getProvider(walletProvider);
-      const signer = await readWriteProvider.getSigner();
-      const contract = getFYNTokenContract(signer);
+    try {
+      // Prepare the contract call
+      const transaction = prepareContractCall({
+        contract: getFYNTokenContract,
+        method: "function claim(address _user)",
+        params: [account.address],
+      });
 
-      startLoading();
+      // Send the transaction
+      const { transactionHash } = await sendTransaction({
+        account,
+        transaction,
+      });
 
-      try {
-        const estimateGas = await contract.claim.estimateGas();
-        const tx = await contract.claim({ gasLimit: estimateGas });
+      toast.success(`FYN token claimed successfully! TX: ${transactionHash}`);
+      return true;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message.includes("Already claimed")
+          ? "You have already claimed your FYN tokens."
+          : "An error occurred while claiming the token.";
+      toast.error(errorMessage);
+      console.error("Claim error:", error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        toast.message("Please wait while we process your transaction.");
-        const receipt = await tx.wait();
-
-        if (!receipt.status) {
-          throw new Error("Transaction failed");
-        }
-        toast.success("Token claimed successfully");
-      } catch (error) {
-        const err = error as ErrorWithReason;
-        const errorMessage =
-          err.reason === "Already claimed"
-            ? "You have already claimed your token."
-            : "An error occurred while claiming the token.";
-        toast.error(errorMessage);
-        console.error("Registration error:", error);
-      } finally {
-        stopLoading();
-      }
-    },
-
-    [walletProvider, isConnected, chainId, startLoading, stopLoading]
-  );
-
-    return { claim, isLoading };
+  return { claim, isLoading };
 };
 
 export default useClaimFYN;

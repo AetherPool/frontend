@@ -1,75 +1,62 @@
 "use client";
 
-import { useCallback } from "react";
-import { getProvider } from "@/constants/providers";
-import { isSupportedChain } from "@/constants/chain";
-import { getQRTTokenContract } from "@/constants/contracts";
+import { useActiveAccount, useActiveWalletChain } from "thirdweb/react";
+import { prepareContractCall, sendTransaction } from "thirdweb";
 import { toast } from "sonner";
-import { useChainId, useAccount } from "wagmi";
-import { useAppKitProvider, type Provider } from "@reown/appkit/react";
-import { useLoading } from "../useLoading";
+import { useThirdwebContracts } from "@/constants/contracts";
+import { isSupportedChain } from "@/constants/chain";
+import { useState } from "react";
 
-type ErrorWithReason = {
-  reason?: string;
-  message?: string;
-};
+const useClaimQRT = () => {
+  const account = useActiveAccount();
+  const chain = useActiveWalletChain();
+  const { getQRTTokenContract } = useThirdwebContracts();
+  const [isLoading, setIsLoading] = useState(false);
 
-const useClaimFYN = () => {
-  const chainId = useChainId();
-  const { isConnected } = useAccount();
-  const { walletProvider } = useAppKitProvider<Provider>("eip155");
-  const { isLoading, startLoading, stopLoading } = useLoading();
-
-  const claim = useCallback(async () => {
-    if (!walletProvider) {
-      toast.error(
-        "Wallet provider is not available. Please try reconnecting your wallet."
-      );
-      return;
-    }
-
-    if (!isConnected) {
+  const claim = async () => {
+    if (!account) {
       toast.warning("Please connect your wallet first.");
-      return;
+      return false;
     }
-    if (!isSupportedChain(chainId)) {
+    if (!chain || !isSupportedChain(chain.id)) {
       toast.warning(
         "Unsupported network. Please switch to the correct network."
       );
-      return;
+      return false;
     }
 
-    const readWriteProvider = getProvider(walletProvider);
-    const signer = await readWriteProvider.getSigner();
-    const contract = getQRTTokenContract(signer);
-
-    startLoading();
+    setIsLoading(true);
 
     try {
-      const estimateGas = await contract.claim.estimateGas();
-      const tx = await contract.claim({ gasLimit: estimateGas });
+      // Prepare the contract call
+      const transaction = prepareContractCall({
+        contract: getQRTTokenContract,
+        method: "function claim(address _user)",
+        params: [account.address],
+      });
 
-      toast.message("Please wait while we process your transaction.");
-      const receipt = await tx.wait();
+      // Send the transaction
+      const { transactionHash } = await sendTransaction({
+        account,
+        transaction,
+      });
 
-      if (!receipt.status) {
-        throw new Error("Transaction failed");
-      }
-      toast.success("Token claimed successfully");
+      toast.success(`QRT token claimed successfully! TX: ${transactionHash}`);
+      return true;
     } catch (error) {
-      const err = error as ErrorWithReason;
       const errorMessage =
-        err.reason === "Already claimed"
-          ? "You have already claimed your token."
+        error instanceof Error && error.message.includes("Already claimed")
+          ? "You have already claimed your QRT tokens."
           : "An error occurred while claiming the token.";
       toast.error(errorMessage);
-      console.error("Registration error:", error);
+      console.error("Claim error:", error);
+      return false;
     } finally {
-      stopLoading();
+      setIsLoading(false);
     }
-  }, [walletProvider, isConnected, chainId, startLoading, stopLoading]);
+  };
 
   return { claim, isLoading };
 };
 
-export default useClaimFYN;
+export default useClaimQRT;

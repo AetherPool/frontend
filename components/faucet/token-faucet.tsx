@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Droplets, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useHasClaimedQRT from "@/hooks/Token/useHasClaimedQRT";
+import useHasClaimedFYN from "@/hooks/Token/useHasClaimedFYN";
+import useClaimFYN from "@/hooks/Token/useClaimFYN";
+import useClaimQRT from "@/hooks/Token/useClaimQRT";
 
 interface Token {
   symbol: string;
@@ -12,20 +15,41 @@ interface Token {
 }
 
 const FAUCET_TOKENS: Token[] = [
-  { symbol: "FYN", name: "FYN Token", claimAmount: "10,000", icon: "F" },
-  { symbol: "QRT", name: "QRT Token", claimAmount: "10,000", icon: "Q" },
+  { symbol: "FYN", name: "Fyntera", claimAmount: "1,000,000", icon: "F" },
+  { symbol: "QRT", name: "Quarita", claimAmount: "1,000,000", icon: "Q" },
 ];
 
 export function TokenFaucet() {
-  const [claiming, setClaiming] = useState<string | null>(null);
-  const [claimed, setClaimed] = useState<string[]>([]);
+  const { hasClaimed: hasClaimedQRT, isLoading: isCheckingQRT } =
+    useHasClaimedQRT();
+  const { hasClaimed: hasClaimedFYN, isLoading: isCheckingFYN } =
+    useHasClaimedFYN();
+  const { claim: claimFYN, isLoading: isClaimingFYN } = useClaimFYN();
+  const { claim: claimQRT, isLoading: isClaimingQRT } = useClaimQRT();
 
   const handleClaim = async (symbol: string) => {
-    setClaiming(symbol);
-    // Simulate claim transaction
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setClaimed((prev) => [...prev, symbol]);
-    setClaiming(null);
+    if (symbol === "FYN") {
+      await claimFYN();
+    } else if (symbol === "QRT") {
+      await claimQRT();
+    }
+  };
+
+  const getClaimStatus = (symbol: string) => {
+    if (symbol === "FYN") {
+      return {
+        hasClaimed: hasClaimedFYN,
+        isLoading: isClaimingFYN,
+        isCheckingClaim: isCheckingFYN,
+      };
+    } else if (symbol === "QRT") {
+      return {
+        hasClaimed: hasClaimedQRT,
+        isLoading: isClaimingQRT,
+        isCheckingClaim: isCheckingQRT,
+      };
+    }
+    return { hasClaimed: null, isLoading: false, isCheckingClaim: false };
   };
 
   return (
@@ -40,8 +64,9 @@ export function TokenFaucet() {
 
       <div className="space-y-3">
         {FAUCET_TOKENS.map((token) => {
-          const isClaiming = claiming === token.symbol;
-          const hasClaimed = claimed.includes(token.symbol);
+          const { hasClaimed, isLoading, isCheckingClaim } = getClaimStatus(
+            token.symbol
+          );
 
           return (
             <div
@@ -64,16 +89,16 @@ export function TokenFaucet() {
                 <Button
                   size="sm"
                   onClick={() => handleClaim(token.symbol)}
-                  disabled={isClaiming || hasClaimed}
+                  disabled={isLoading || isCheckingClaim || hasClaimed === true}
                   className={`min-w-20 ${
-                    hasClaimed
+                    hasClaimed === true
                       ? "bg-green-500/20 text-green-400 border border-green-500/30"
                       : "bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700"
                   }`}
                 >
-                  {isClaiming ? (
+                  {isLoading || isCheckingClaim ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : hasClaimed ? (
+                  ) : hasClaimed === true ? (
                     <Check className="w-4 h-4" />
                   ) : (
                     "Claim"
