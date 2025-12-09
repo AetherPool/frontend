@@ -58,12 +58,11 @@ export const getProfitManagerContract = (providerOrSigner: ethers.Provider | eth
         providerOrSigner
     );
 
-export const getTokenContract = (providerOrSigner: ethers.Provider | ethers.Signer) =>
-    new ethers.Contract(
-        process.env.TOKEN_ADDRESS as string,
-        Token,
-        providerOrSigner
-    );
+export const getQRTTokenContract = (providerOrSigner: ethers.Provider | ethers.Signer) =>
+    new ethers.Contract(process.env.QRT_TOKEN as string, Token, providerOrSigner);
+
+export const getFYNTokenContract = (providerOrSigner: ethers.Provider | ethers.Signer) =>
+  new ethers.Contract(process.env.FYN_TOKEN as string, Token, providerOrSigner);
 
 export const getHookContract = (providerOrSigner: ethers.Provider | ethers.Signer) =>
     new ethers.Contract(
