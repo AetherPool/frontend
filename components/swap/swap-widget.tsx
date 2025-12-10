@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import useGetFYNBalance from "@/hooks/Token/useGetFYNBalance";
 import useGetQRTBalance from "@/hooks/Token/useGetQRTBalance";
-import { useAccount } from "@/lib/thirdweb-hooks";
+import { useAccount } from "wagmi";
 
 interface Token {
   symbol: string;

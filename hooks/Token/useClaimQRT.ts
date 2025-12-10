@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
 import { getProvider } from "@/constants/providers";
 import { isSupportedChain } from "@/constants/chain";
 import { getQRTTokenContract } from "@/constants/contracts";
 import { toast } from "sonner";
 import { useChainId, useAccount } from "wagmi";
 import { useAppKitProvider, type Provider } from "@reown/appkit/react";
+import { useLoading } from "../useLoading";
 
 type ErrorWithReason = {
   reason?: string;
@@ -15,10 +15,11 @@ type ErrorWithReason = {
 
 const useClaimQRT = () => {
   const chainId = useChainId();
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const { walletProvider } = useAppKitProvider<Provider>("eip155");
+  const { isLoading, startLoading, stopLoading } = useLoading();
 
-  return useCallback(async () => {
+  const claim = async () => {
     if (!walletProvider) {
       toast.error(
         "Wallet provider is not available. Please try reconnecting your wallet."
@@ -37,13 +38,14 @@ const useClaimQRT = () => {
       return;
     }
 
+    startLoading();
     const readWriteProvider = getProvider(walletProvider);
     const signer = await readWriteProvider.getSigner();
     const contract = getQRTTokenContract(signer);
 
     try {
-      const estimateGas = await contract.claim.estimateGas();
-      const tx = await contract.claim({ gasLimit: estimateGas });
+      const estimateGas = await contract.claim.estimateGas(address);
+      const tx = await contract.claim(address, { gasLimit: estimateGas });
 
       toast.message("Please wait while we process your transaction.");
       const receipt = await tx.wait();
@@ -59,9 +61,13 @@ const useClaimQRT = () => {
           ? "You have already claimed your token."
           : "An error occurred while claiming the token.";
       toast.error(errorMessage);
-      console.error("Registration error:", error);
+      console.error("Claim error:", error);
+    } finally {
+      stopLoading();
     }
-  }, [chainId, isConnected, walletProvider]);
+  };
+
+  return { claim, isLoading };
 };
 
 export default useClaimQRT;

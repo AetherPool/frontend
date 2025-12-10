@@ -35,7 +35,7 @@ export const modal = createAppKit({
   defaultNetwork: baseSepolia,
   metadata: metadata,
   features: {
-    analytics: false, // Optional - defaults to your Cloud configuration
+    analytics: false, // Disable analytics
     email: true,
     socials: ["google", "x", "github", "discord", "farcaster"],
     emailShowWallets: true,
@@ -43,7 +43,7 @@ export const modal = createAppKit({
   allWallets: "SHOW",
   themeMode: "dark",
   themeVariables: {
-    "--w3m-accent": "#3b82f6",
+    "--w3m-accent": "#9333ea",
     "--w3m-border-radius-master": "8px",
   },
 });

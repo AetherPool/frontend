@@ -1,7 +1,7 @@
 import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
+// import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Toaster } from "sonner";
 // import { ThirdwebProvider } from "thirdweb/react";
@@ -27,13 +27,23 @@ export default async function RootLayout({
   
   return (
     <html lang="en">
+      <head>
+        {/* Preload the font properly */}
+        <link
+          rel="preload"
+          href="https://fonts.reown.com/KHTeka-Medium.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
         className={`font-sans antialiased ${_geist.className} ${_geistMono.className}`}
       >
         <ContextProvider cookies={cookies}>
           <Toaster />
           {children}
-          <Analytics />
+          {/* <Analytics /> */}
         </ContextProvider>
       </body>
     </html>
