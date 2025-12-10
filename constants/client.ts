@@ -1,5 +1,5 @@
-import { createThirdwebClient } from "thirdweb";
+// import { createThirdwebClient } from "thirdweb";
 
-export const client = createThirdwebClient({
-  clientId: process.env.THIRDWEB_CLIENT_ID as string,
-});
+// export const client = createThirdwebClient({
+//   clientId: process.env.THIRDWEB_CLIENT_ID as string,
+// });

@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  webpack: config => {
+    config.externals.push('pino-pretty', 'lokijs', 'encoding')
+    return config
+  },
   env: {
     PROJECT_ID: process.env.PROJECT_ID,
     THIRDWEB_CLIENT_ID: process.env.THIRDWEB_CLIENT_ID,

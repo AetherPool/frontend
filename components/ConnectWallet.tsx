@@ -1,12 +1,11 @@
 "use client";
 
-import { thirdwebClient, wallets } from "@/app/client";
 import { useEffect, useState } from "react";
-import { ConnectButton, darkTheme, useActiveAccount } from "thirdweb/react";
-import type { Account } from "thirdweb/wallets";
-import { useChainSwitch } from "@/hooks/useChainSwitch";
-import { baseSepolia } from "thirdweb/chains";
+import { useAccount, useDisconnect } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import { getBasename } from "@superdevfavour/basename";
+import { Button } from "./ui/button";
+import { Wallet, LogOut } from "lucide-react";
 
 interface ConnectWalletProps {
   onConnect?: () => void;
@@ -18,24 +17,12 @@ const ConnectWallet = ({
   label = "Connect Wallet",
 }: ConnectWalletProps) => {
   const [mounted, setMounted] = useState(false);
-  const account = useActiveAccount();
-  const [prevAccount, setPrevAccount] = useState<Account | undefined>(
-    undefined
-  );
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { open } = useAppKit();
   const [basename, setBasename] = useState<string | null>(null);
   const [isLoadingBasename, setIsLoadingBasename] = useState(false);
-  const { isOnCorrectChain, switchToBaseSepolia } = useChainSwitch();
-
-  const origin =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "https://aetherpool.vercel.app";
-
-  const metadata = {
-    name: "AetherPool - Privacy-First JIT Liquidity",
-    description: "Multi-LP JIT liquidity protocol with FHE encryption",
-    url: origin,
-  };
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -44,14 +31,14 @@ const ConnectWallet = ({
   // Fetch Basename for connected wallet
   useEffect(() => {
     const fetchBasename = async () => {
-      if (!account?.address) {
+      if (!address) {
         setBasename(null);
         return;
       }
 
       try {
         setIsLoadingBasename(true);
-        const name = await getBasename(`0x${account.address}`);
+        const name = await getBasename(address);
         setBasename(name || null);
       } catch (error) {
         console.log("No Basename found or error fetching:", error);
@@ -62,84 +49,108 @@ const ConnectWallet = ({
     };
 
     fetchBasename();
-  }, [account?.address]);
+  }, [address]);
 
+  // Call onConnect when connected
   useEffect(() => {
-    if (account && !prevAccount && onConnect) {
+    if (isConnected && onConnect) {
       onConnect();
     }
-    setPrevAccount(account);
-  }, [account, prevAccount, onConnect]);
+  }, [isConnected, onConnect]);
 
-  // Auto-switch to correct chain when wallet connects
+  // Close menu when clicking outside
   useEffect(() => {
-    if (account && !isOnCorrectChain) {
-      // Small delay to ensure wallet is fully connected
-      const timer = setTimeout(() => {
-        switchToBaseSepolia();
-      }, 1000);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".wallet-menu-container")) {
+        setShowMenu(false);
+      }
+    };
 
-      return () => clearTimeout(timer);
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [account, isOnCorrectChain, switchToBaseSepolia]);
+  }, [showMenu]);
 
   // Format display name: Basename or shortened address
   const getDisplayName = () => {
-    if (isLoadingBasename && account) {
+    if (isLoadingBasename && address) {
       return "Loading...";
     }
     if (basename) {
       return basename;
     }
-    if (account?.address) {
-      return `${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
+    if (address) {
+      return `${address.slice(0, 6)}...${address.slice(-4)}`;
     }
     return label;
   };
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <Button className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2">
+        <Wallet className="w-4 h-4" />
+        {label}
+      </Button>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <div className="relative wallet-menu-container">
+        <Button
+          onClick={() => setShowMenu(!showMenu)}
+          className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
+        >
+          <Wallet className="w-4 h-4" />
+          {getDisplayName()}
+        </Button>
+
+        {showMenu && (
+          <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50">
+            <div className="p-4 border-b border-slate-700">
+              <p className="text-xs text-gray-400 mb-2">Connected Account</p>
+              <p className="text-sm text-white font-mono">
+                {address?.slice(0, 10)}...{address?.slice(-8)}
+              </p>
+            </div>
+
+            <div className="p-2">
+              <button
+                onClick={() => open()}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-slate-700 rounded-lg transition-colors mb-1"
+              >
+                <Wallet className="w-4 h-4" />
+                Account Details
+              </button>
+
+              <button
+                onClick={() => {
+                  disconnect();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Disconnect
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="hidden md:flex">
-        <ConnectButton
-          client={thirdwebClient}
-          appMetadata={metadata}
-          connectButton={{
-            label: account ? getDisplayName() : label,
-          }}
-          wallets={wallets}
-          connectModal={{ size: "compact" }}
-          chain={baseSepolia}
-          chains={[baseSepolia]}
-          theme={darkTheme({
-            colors: {
-              primaryButtonBg: "#9333ea",
-              primaryButtonText: "#ffffff",
-            },
-          })}
-        />
-      </div>
-      <div className="md:hidden flex">
-        <ConnectButton
-          client={thirdwebClient}
-          appMetadata={metadata}
-          connectButton={{
-            label: account ? getDisplayName() : label,
-          }}
-          wallets={wallets}
-          connectModal={{ size: "compact" }}
-          chain={baseSepolia}
-          chains={[baseSepolia]}
-          theme={darkTheme({
-            colors: {
-              primaryButtonBg: "#9333ea",
-              primaryButtonText: "#ffffff",
-            },
-          })}
-        />
-      </div>
-    </div>
+    <Button
+      onClick={() => open()}
+      className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
+    >
+      <Wallet className="w-4 h-4" />
+      {label}
+    </Button>
   );
 };
 

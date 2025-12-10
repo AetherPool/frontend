@@ -14,12 +14,17 @@ if (!projectId) {
   throw new Error("Project ID is not defined");
 }
 
+const origin =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "https://aetherpool.vercel.app";
+
 // Set up metadata
 const metadata = {
-  name: "appkit-example",
-  description: "AppKit Example",
-  url: "https://appkitexampleapp.com", // origin must match your domain & subdomain
-  icons: ["https://avatars.githubusercontent.com/u/179229932"],
+  name: "AetherPool",
+  description: "Multi-LP JIT liquidity protocol with FHE encryption",
+  url: origin,
+  icons: [""],
 };
 
 // Create the modal
@@ -31,6 +36,9 @@ export const modal = createAppKit({
   metadata: metadata,
   features: {
     analytics: false, // Optional - defaults to your Cloud configuration
+    email: true,
+    socials: ["google", "x", "github", "discord", "farcaster"],
+    emailShowWallets: true,
   },
   allWallets: "SHOW",
   themeMode: "dark",

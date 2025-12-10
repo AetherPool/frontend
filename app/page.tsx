@@ -120,10 +120,12 @@ export default function Home() {
               </Link>
             </nav>
 
-            <ConnectWallet
-              onConnect={handleWalletConnect}
-              label="Connect Wallet"
-            />
+            <div className="hidden md:block">
+              <ConnectWallet
+                onConnect={handleWalletConnect}
+                label="Connect Wallet"
+              />
+            </div>
 
             {/* Mobile Menu Button */}
             <button
