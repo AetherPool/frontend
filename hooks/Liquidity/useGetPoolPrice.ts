@@ -33,13 +33,22 @@ const useGetPoolPrice = (poolKey: PoolKey | null) => {
       // Get current price from the pool
       const [sqrtPriceX96, tick] = await contract.getCurrentPrice(poolKey);
 
-      // Get the human-readable price ratio
       const ratio = await contract.getPriceRatio(poolKey);
+
+      // The ratio from contract is scaled by 1e18, so divide by 1e18
+      const contractRatio = Number(ratio.toString()) / 1e18;
 
       setPrice({
         sqrtPriceX96: sqrtPriceX96.toString(),
         tick: tick,
-        ratio: parseFloat(ratio.toString()) / 1e12, // Assuming ratio is scaled by 1e18
+        ratio: contractRatio,
+      });
+
+      console.log("Pool Price Debug:", {
+        sqrtPriceX96: sqrtPriceX96.toString(),
+        tick: tick,
+        rawRatio: ratio.toString(),
+        contractRatio: contractRatio,
       });
     } catch (error) {
       console.error("Error fetching pool price:", error);
@@ -54,8 +63,8 @@ const useGetPoolPrice = (poolKey: PoolKey | null) => {
   useEffect(() => {
     fetchPoolPrice();
 
-    // Optionally refresh price every 10 seconds
-    const interval = setInterval(fetchPoolPrice, 10000);
+    // Optionally refresh price every 60 seconds
+    const interval = setInterval(fetchPoolPrice, 60000);
 
     return () => clearInterval(interval);
   }, [fetchPoolPrice]);

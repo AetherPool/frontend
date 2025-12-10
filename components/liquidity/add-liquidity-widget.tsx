@@ -65,7 +65,7 @@ export function AddLiquidityWidget({
     () => ({
       currency0: TOKEN_A.address,
       currency1: TOKEN_B.address,
-      fee: 3000, // 0.3% fee
+      fee: 8388608,
       tickSpacing: 60,
       hooks: process.env.HOOK || "",
     }),
