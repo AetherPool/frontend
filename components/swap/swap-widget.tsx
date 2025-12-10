@@ -9,19 +9,25 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useGetFYNBalance from "@/hooks/Token/useGetFYNBalance";
+import useGetQRTBalance from "@/hooks/Token/useGetQRTBalance";
+import { useAccount } from "@/lib/thirdweb-hooks";
 
 interface Token {
   symbol: string;
   name: string;
-  balance: string;
 }
 
 const TOKENS: Token[] = [
-  { symbol: "QRT", name: "QRT Token", balance: "10000.0" },
-  { symbol: "FYN", name: "FYN Token", balance: "10000.0" },
+  { symbol: "QRT", name: "Quarita" },
+  { symbol: "FYN", name: "Fyntera" },
 ];
 
 export function SwapWidget() {
+  const { isConnected } = useAccount();
+  const fynBalance = useGetFYNBalance();
+  const qrtBalance = useGetQRTBalance();
+
   const [fromToken, setFromToken] = useState<Token>(TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(TOKENS[1]);
   const [fromAmount, setFromAmount] = useState("");
@@ -35,6 +41,18 @@ export function SwapWidget() {
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [showError, setShowError] = useState(false);
+
+  // Get balance for current token
+  const getTokenBalance = (tokenSymbol: string): string => {
+    if (!isConnected) return "0.0";
+
+    if (tokenSymbol === "FYN") {
+      return fynBalance !== null ? fynBalance.toFixed(4) : "0.0";
+    } else if (tokenSymbol === "QRT") {
+      return qrtBalance !== null ? qrtBalance.toFixed(4) : "0.0";
+    }
+    return "0.0";
+  };
 
   useEffect(() => {
     if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
@@ -99,7 +117,16 @@ export function SwapWidget() {
     setExpectedOutput(null);
   };
 
+  const handleMaxClick = () => {
+    const balance = getTokenBalance(fromToken.symbol);
+    setFromAmount(balance);
+  };
+
   const handleSwap = () => {
+    if (!isConnected) {
+      console.log("Please connect wallet");
+      return;
+    }
     console.log("Swap executed:", {
       fromToken,
       toToken,
@@ -107,6 +134,13 @@ export function SwapWidget() {
       expectedOutput,
     });
   };
+
+  const fromBalance = getTokenBalance(fromToken.symbol);
+  const toBalance = getTokenBalance(toToken.symbol);
+  const insufficientBalance =
+    fromAmount && Number.parseFloat(fromAmount) > Number.parseFloat(fromBalance)
+      ? true
+      : false;
 
   return (
     <div className="bg-linear-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 w-full max-w-md overflow-visible">
@@ -170,9 +204,19 @@ export function SwapWidget() {
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-2">
         <div className="flex justify-between mb-2">
           <span className="text-sm text-gray-400">Sell</span>
-          <span className="text-sm text-gray-400">
-            Balance: {fromToken.balance}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">
+              Balance: {fromBalance}
+            </span>
+            {isConnected && Number.parseFloat(fromBalance) > 0 && (
+              <button
+                onClick={handleMaxClick}
+                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
+              >
+                MAX
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -214,6 +258,11 @@ export function SwapWidget() {
             )}
           </div>
         </div>
+        {insufficientBalance && (
+          <div className="mt-2 text-sm text-red-400">
+            Insufficient {fromToken.symbol} balance
+          </div>
+        )}
       </div>
 
       {/* Swap Button */}
@@ -230,9 +279,7 @@ export function SwapWidget() {
       <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mt-2">
         <div className="flex justify-between mb-2">
           <span className="text-sm text-gray-400">Buy</span>
-          <span className="text-sm text-gray-400">
-            Balance: {toToken.balance}
-          </span>
+          <span className="text-sm text-gray-400">Balance: {toBalance}</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex-1 text-2xl text-white font-medium min-w-0">
@@ -427,15 +474,21 @@ export function SwapWidget() {
 
       <Button
         onClick={handleSwap}
-        disabled={!fromAmount || showError}
+        disabled={
+          !isConnected || !fromAmount || showError || insufficientBalance
+        }
         className={`w-full mt-4 py-6 text-white font-semibold text-lg rounded-xl transition-all ${
-          showError
+          !isConnected || showError || insufficientBalance
             ? "bg-slate-700 cursor-not-allowed"
             : "bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700"
         }`}
       >
-        {!fromAmount
+        {!isConnected
+          ? "Connect Wallet"
+          : !fromAmount
           ? "Enter Amount"
+          : insufficientBalance
+          ? `Insufficient ${fromToken.symbol} Balance`
           : showError
           ? "Increase Slippage to Swap"
           : "Swap"}
