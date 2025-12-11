@@ -152,7 +152,7 @@ const useSetFHEConfig = () => {
       );
 
       toast.message("Waiting for confirmation...");
-      const receipt = await tx.wait();
+      const receipt = await tx.wait(2);
 
       if (!receipt || receipt.status !== 1) {
         throw new Error("Transaction failed");
