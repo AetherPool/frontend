@@ -1,48 +1,77 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ArrowDown,
   Settings,
   Info,
   AlertCircle,
   TrendingDown,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import useGetFYNBalance from "@/hooks/Token/useGetFYNBalance";
 import useGetQRTBalance from "@/hooks/Token/useGetQRTBalance";
+import useApproveTokens from "@/hooks/Liquidity/useApproveTokens";
+import useSwap from "@/hooks/Swap/useSwap";
+import useGetPoolPrice from "@/hooks/Liquidity/useGetPoolPrice";
+import useGetPoolLiquidity from "@/hooks/Liquidity/useGetPoolLiquidity";
 import { useAccount } from "wagmi";
+import { ethers } from "ethers";
 
 interface Token {
   symbol: string;
   name: string;
+  address: string;
 }
 
+const FYN_ADDRESS = process.env.FYN_TOKEN || "";
+const QRT_ADDRESS = process.env.QRT_TOKEN || "";
+const HOOK_ADDRESS = process.env.HOOK || "";
+const HOOK_SWAP_ROUTER = process.env.HOOK_SWAP_ROUTER || "";
+
 const TOKENS: Token[] = [
-  { symbol: "QRT", name: "Quarita" },
-  { symbol: "FYN", name: "Fyntera" },
+  { symbol: "QRT", name: "Quarita", address: QRT_ADDRESS },
+  { symbol: "FYN", name: "Fyntera", address: FYN_ADDRESS },
 ];
 
 export function SwapWidget() {
   const { isConnected } = useAccount();
   const fynBalance = useGetFYNBalance();
   const qrtBalance = useGetQRTBalance();
+  const { approveBothTokens, isLoading: isApproving } = useApproveTokens();
+  const { swap, isLoading: isSwapping, isPreparingSwap } = useSwap();
 
   const [fromToken, setFromToken] = useState<Token>(TOKENS[0]);
   const [toToken, setToToken] = useState<Token>(TOKENS[1]);
   const [fromAmount, setFromAmount] = useState("");
-  const [slippageTolerance, setSlippageTolerance] = useState(0.5);
+  const [slippageTolerance, setSlippageTolerance] = useState(1.0);
   const [showSettings, setShowSettings] = useState(false);
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
 
-  const [poolLiquidity] = useState(70000); // tokens per side
   const [expectedOutput, setExpectedOutput] = useState<number | null>(null);
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [showError, setShowError] = useState(false);
 
-  // Get balance for current token
+  // Pool key configuration
+  const poolKey = useMemo(() => ({
+    currency0: QRT_ADDRESS,
+    currency1: FYN_ADDRESS,
+    fee: 8388608,
+    tickSpacing: 60,
+    hooks: HOOK_ADDRESS,
+  }), []);
+
+  // Get current pool price and liquidity
+  const { price: poolPrice, refetch: refetchPrice } = useGetPoolPrice(poolKey);
+  const { liquidity: poolLiquidityData, refetch: refetchLiquidity } =
+    useGetPoolLiquidity(poolKey);
+  console.log("Pool Liquidity Data:", poolLiquidityData);
+
+  const poolLiquidity = poolLiquidityData?.totalToken0 || 70000;
+
   const getTokenBalance = (tokenSymbol: string): string => {
     if (!isConnected) return "0.0";
 
@@ -54,8 +83,15 @@ export function SwapWidget() {
     return "0.0";
   };
 
+  // Improved output and price impact calculation using actual pool price
   useEffect(() => {
-    if (!fromAmount || Number.parseFloat(fromAmount) <= 0) {
+    if (
+      !fromAmount ||
+      Number.parseFloat(fromAmount) <= 0 ||
+      !poolPrice ||
+      !poolLiquidity ||
+      poolLiquidity === 0
+    ) {
       setTimeout(() => {
         setExpectedOutput(null);
         setPriceImpact(null);
@@ -67,25 +103,40 @@ export function SwapWidget() {
 
     const amount = Number.parseFloat(fromAmount);
 
-    // Constant product formula: x * y = k
+    // Use actual price ratio from the pool
+    const currentPriceRatio = poolPrice.ratio;
+
+    // Determine direction
+    const isToken0ToToken1 =
+      fromToken.address.toLowerCase() === poolKey.currency0.toLowerCase();
+
+    // Calculate expected output using actual price
+    let expectedOut: number;
+    if (isToken0ToToken1) {
+      expectedOut = amount * currentPriceRatio;
+    } else {
+      expectedOut = amount / currentPriceRatio;
+    }
+
+    // Apply trading fee (0.3%)
+    const outputAfterFee = expectedOut * 0.997;
+
+    // Calculate price impact using constant product formula
     const k = poolLiquidity * poolLiquidity;
     const newX = poolLiquidity + amount;
     const newY = k / newX;
-    const outputAmount = poolLiquidity - newY;
+    const actualOutput = poolLiquidity - newY;
+    const actualOutputAfterFee = actualOutput * 0.997;
 
-    // Account for 0.3% fee
-    const outputAfterFee = outputAmount * 0.997;
-
-    // Calculate price impact (1:1 base price)
-    const idealOutput = amount * 1.0;
-    const impact = ((idealOutput - outputAfterFee) / idealOutput) * 100;
+    // Price impact is the difference between expected and actual
+    const impact = ((expectedOut - actualOutputAfterFee) / expectedOut) * 100;
 
     setTimeout(() => {
-      setExpectedOutput(outputAfterFee);
-      setPriceImpact(impact);
+      setExpectedOutput(actualOutputAfterFee);
+      setPriceImpact(Math.max(0, impact));
     }, 0);
 
-    // Show warnings based on price impact vs slippage
+    // Show warnings based on price impact vs slippage tolerance
     setTimeout(() => {
       if (impact > slippageTolerance) {
         setShowError(true);
@@ -98,16 +149,26 @@ export function SwapWidget() {
         setShowError(false);
       }
     }, 0);
-  }, [fromAmount, slippageTolerance, poolLiquidity]);
+  }, [
+    fromAmount,
+    slippageTolerance,
+    poolLiquidity,
+    poolPrice,
+    fromToken,
+    toToken,
+    poolKey,
+  ]);
 
   const getRecommendedSlippage = () => {
     if (!priceImpact) return slippageTolerance;
-    return Math.max(Math.ceil(priceImpact * 1.5 * 10) / 10, 0.5);
+    // Recommend slippage that's 50% higher than price impact, minimum 2%
+    return Math.max(Math.ceil(priceImpact * 1.5 * 10) / 10, 2.0);
   };
 
-  const minReceived = expectedOutput
-    ? expectedOutput * (1 - slippageTolerance / 100)
-    : 0;
+  const minReceived =
+    expectedOutput && slippageTolerance
+      ? expectedOutput * (1 - slippageTolerance / 100)
+      : 0;
 
   const handleSwapTokens = () => {
     const tempToken = fromToken;
@@ -122,25 +183,83 @@ export function SwapWidget() {
     setFromAmount(balance);
   };
 
-  const handleSwap = () => {
+  const handleSwap = async () => {
     if (!isConnected) {
       console.log("Please connect wallet");
       return;
     }
-    console.log("Swap executed:", {
-      fromToken,
-      toToken,
-      fromAmount,
-      expectedOutput,
-    });
+
+    if (!expectedOutput || !fromAmount) {
+      return;
+    }
+
+    try {
+      // Convert amounts to wei (6 decimals)
+      const amountInWei = ethers.parseUnits(fromAmount, 6).toString();
+
+      // Calculate minimum output with slippage protection
+      // Use the expected output and apply slippage tolerance
+      const minOut = expectedOutput * (1 - slippageTolerance / 100);
+      const minAmountOutWei = ethers
+        .parseUnits(minOut.toFixed(6), 6)
+        .toString();
+
+      console.log("Swap parameters:", {
+        amountIn: fromAmount,
+        expectedOutput: expectedOutput.toFixed(6),
+        minOut: minOut.toFixed(6),
+        slippageTolerance: slippageTolerance,
+      });
+
+      // Step 1: Approve tokens
+      const approved = await approveBothTokens(
+        fromToken.address,
+        toToken.address,
+        HOOK_SWAP_ROUTER,
+        amountInWei,
+        "0"
+      );
+
+      if (!approved) {
+        return;
+      }
+
+      // Step 2: Execute swap with JIT preparation
+      const result = await swap(
+        {
+          poolKey,
+          tokenIn: fromToken.address,
+          tokenOut: toToken.address,
+          amountIn: amountInWei,
+          minAmountOut: minAmountOutWei,
+        },
+        slippageTolerance // Pass slippage for accurate calculation
+      );
+
+      if (result) {
+        // Reset form on success
+        setFromAmount("");
+        setExpectedOutput(null);
+        setPriceImpact(null);
+
+        // Refetch balances and pool data
+        setTimeout(() => {
+          refetchPrice();
+          refetchLiquidity();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Swap failed:", error);
+    }
   };
 
   const fromBalance = getTokenBalance(fromToken.symbol);
   const toBalance = getTokenBalance(toToken.symbol);
   const insufficientBalance =
-    fromAmount && Number.parseFloat(fromAmount) > Number.parseFloat(fromBalance)
-      ? true
-      : false;
+    fromAmount &&
+    Number.parseFloat(fromAmount) > Number.parseFloat(fromBalance);
+
+  const isProcessing = isApproving || isSwapping || isPreparingSwap;
 
   return (
     <div className="bg-linear-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 w-full max-w-md overflow-visible">
@@ -192,10 +311,27 @@ export function SwapWidget() {
           />
           <div className="mt-3 text-xs text-slate-400 space-y-1">
             <p>
-              • Slippage tolerance is the maximum price movement you&apos;ll
-              accept
+              • Slippage tolerance is the maximum price movement you&apos;ll accept
             </p>
-            <p>• If price impact {">"} slippage, the transaction will revert</p>
+            <p>• Higher slippage = higher chance of success but worse price</p>
+            <p>• Recommended: 2-5% for JIT liquidity pools</p>
+          </div>
+        </div>
+      )}
+
+      {isPreparingSwap && (
+        <div className="mb-4 p-4 bg-purple-900/20 border border-purple-600 rounded-xl">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-purple-400 animate-spin shrink-0" />
+            <div className="flex-1">
+              <div className="font-semibold text-purple-300 mb-1">
+                Preparing JIT Liquidity
+              </div>
+              <div className="text-sm text-slate-300">
+                Decrypting LP configurations and preparing optimal liquidity...
+                This may take a few moments.
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -211,7 +347,8 @@ export function SwapWidget() {
             {isConnected && Number.parseFloat(fromBalance) > 0 && (
               <button
                 onClick={handleMaxClick}
-                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
+                disabled={isProcessing}
+                className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold disabled:opacity-50"
               >
                 MAX
               </button>
@@ -224,19 +361,23 @@ export function SwapWidget() {
             value={fromAmount}
             onChange={(e) => setFromAmount(e.target.value)}
             placeholder="0.0"
-            className="flex-1 bg-transparent text-2xl text-white font-medium outline-none placeholder:text-gray-600 min-w-0"
+            disabled={isProcessing}
+            className="flex-1 bg-transparent text-2xl text-white font-medium outline-none placeholder:text-gray-600 min-w-0 disabled:opacity-50"
           />
           <div className="relative shrink-0">
             <button
               onClick={() => {
-                setShowFromDropdown(!showFromDropdown);
-                setShowToDropdown(false);
+                if (!isProcessing) {
+                  setShowFromDropdown(!showFromDropdown);
+                  setShowToDropdown(false);
+                }
               }}
-              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors"
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {fromToken.symbol}
             </button>
-            {showFromDropdown && (
+            {showFromDropdown && !isProcessing && (
               <div className="absolute right-0 top-full mt-2 w-32 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
                 {TOKENS.map((token) => (
                   <button
@@ -269,7 +410,8 @@ export function SwapWidget() {
       <div className="flex justify-center -my-3 relative z-10">
         <button
           onClick={handleSwapTokens}
-          className="p-2 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-400 transition-colors"
+          disabled={isProcessing}
+          className="p-2 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ArrowDown className="w-5 h-5 text-cyan-400" />
         </button>
@@ -288,14 +430,17 @@ export function SwapWidget() {
           <div className="relative shrink-0">
             <button
               onClick={() => {
-                setShowToDropdown(!showToDropdown);
-                setShowFromDropdown(false);
+                if (!isProcessing) {
+                  setShowToDropdown(!showToDropdown);
+                  setShowFromDropdown(false);
+                }
               }}
-              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors"
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl font-medium cursor-pointer border border-slate-600 hover:border-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {toToken.symbol}
             </button>
-            {showToDropdown && (
+            {showToDropdown && !isProcessing && (
               <div className="absolute right-0 top-full mt-2 w-32 bg-slate-800 border border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
                 {TOKENS.map((token) => (
                   <button
@@ -347,7 +492,7 @@ export function SwapWidget() {
                     : "text-blue-300"
                 }`}
               >
-                {showError && "Transaction Will Fail"}
+                {showError && "Transaction May Fail"}
                 {showWarning && "High Price Impact"}
                 {!showError && !showWarning && "Price Impact"}
               </div>
@@ -356,20 +501,20 @@ export function SwapWidget() {
                   <span>Price Impact:</span>
                   <span
                     className={`font-semibold ${
-                      priceImpact > 10
+                      priceImpact && priceImpact > 10
                         ? "text-red-400"
-                        : priceImpact > 5
+                        : priceImpact && priceImpact > 5
                         ? "text-yellow-400"
                         : "text-green-400"
                     }`}
                   >
-                    {priceImpact.toFixed(2)}%
+                    {priceImpact !== null ? priceImpact.toFixed(2) : "0.00"}%
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Current Slippage:</span>
                   <span className="font-semibold text-white">
-                    {slippageTolerance}%
+                    {slippageTolerance.toFixed(1)}%
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -383,20 +528,16 @@ export function SwapWidget() {
               {showError && (
                 <div className="mt-3 pt-3 border-t border-red-800">
                   <p className="text-sm text-red-200 mb-2">
-                    <strong>Why this fails:</strong> Your price impact (
-                    {priceImpact.toFixed(2)}%) exceeds your slippage tolerance (
+                    <strong>Warning:</strong> Price impact (
+                    {priceImpact.toFixed(2)}%) exceeds slippage tolerance (
                     {slippageTolerance}%).
-                  </p>
-                  <p className="text-sm text-red-200 mb-3">
-                    The swap will output {expectedOutput?.toFixed(4)} tokens,
-                    but your minimum acceptable amount is{" "}
-                    {minReceived.toFixed(4)} tokens.
                   </p>
                   <button
                     onClick={() =>
                       setSlippageTolerance(getRecommendedSlippage())
                     }
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    disabled={isProcessing}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
                   >
                     Increase Slippage to {getRecommendedSlippage()}%
                   </button>
@@ -406,9 +547,8 @@ export function SwapWidget() {
               {showWarning && !showError && (
                 <div className="mt-3 pt-3 border-t border-yellow-800">
                   <p className="text-sm text-yellow-200">
-                    Your trade is close to the slippage limit. Consider
-                    increasing slippage to {getRecommendedSlippage()}% or
-                    reducing trade size.
+                    Consider increasing slippage to {getRecommendedSlippage()}%
+                    or reducing trade size.
                   </p>
                 </div>
               )}
@@ -417,14 +557,17 @@ export function SwapWidget() {
         </div>
       )}
 
-      {fromAmount && expectedOutput && (
+      {fromAmount && expectedOutput && poolLiquidityData && (
         <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
           <h4 className="text-slate-300 font-medium mb-3">Swap Details</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-slate-400">
               <span>Pool Liquidity:</span>
               <span className="text-white">
-                {poolLiquidity.toLocaleString()} tokens
+                {poolLiquidityData.totalToken0.toLocaleString()}{" "}
+                {TOKENS[0].symbol} +{" "}
+                {poolLiquidityData.totalToken1.toLocaleString()}{" "}
+                {TOKENS[1].symbol}
               </span>
             </div>
             <div className="flex justify-between text-slate-400">
@@ -440,7 +583,13 @@ export function SwapWidget() {
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Current Price:</span>
-              <span className="text-white">1 QRT = 1 FYN</span>
+              <span className="text-white">
+                {poolPrice
+                  ? `1 ${fromToken.symbol} = ${poolPrice.ratio.toFixed(6)} ${
+                      toToken.symbol
+                    }`
+                  : "Loading..."}
+              </span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Execution Price:</span>
@@ -461,37 +610,48 @@ export function SwapWidget() {
       <div className="mt-4 p-3 bg-purple-900/20 border border-purple-800/50 rounded-lg">
         <h4 className="text-purple-300 font-semibold mb-2 flex items-center gap-2 text-sm">
           <Info className="w-4 h-4" />
-          How Price Impact Works
+          JIT Liquidity Integration
         </h4>
         <div className="text-xs text-slate-400 space-y-1">
-          <p>• Larger trades cause larger price impact due to AMM mechanics</p>
-          <p>
-            • If price impact {">"} slippage tolerance, the transaction reverts
-          </p>
-          <p>• Reduce trade size or increase slippage to proceed</p>
+          <p>• Swap automatically detects and activates JIT liquidity</p>
+          <p>• LP configurations are decrypted before execution</p>
+          <p>• May take 10-30 seconds for JIT preparation</p>
         </div>
       </div>
 
       <Button
         onClick={handleSwap}
         disabled={
-          !isConnected || !fromAmount || showError || insufficientBalance
+          !isConnected ||
+          !fromAmount ||
+          showError ||
+          insufficientBalance ||
+          isProcessing
         }
         className={`w-full mt-4 py-6 text-white font-semibold text-lg rounded-xl transition-all ${
-          !isConnected || showError || insufficientBalance
+          !isConnected || showError || insufficientBalance || isProcessing
             ? "bg-slate-700 cursor-not-allowed"
             : "bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700"
         }`}
       >
-        {!isConnected
-          ? "Connect Wallet"
-          : !fromAmount
-          ? "Enter Amount"
-          : insufficientBalance
-          ? `Insufficient ${fromToken.symbol} Balance`
-          : showError
-          ? "Increase Slippage to Swap"
-          : "Swap"}
+        {isProcessing ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            {isApproving && "Approving Tokens..."}
+            {isPreparingSwap && "Preparing JIT..."}
+            {isSwapping && "Swapping..."}
+          </span>
+        ) : !isConnected ? (
+          "Connect Wallet"
+        ) : !fromAmount ? (
+          "Enter Amount"
+        ) : insufficientBalance ? (
+          `Insufficient ${fromToken.symbol} Balance`
+        ) : showError ? (
+          "Increase Slippage to Swap"
+        ) : (
+          "Swap"
+        )}
       </Button>
     </div>
   );
