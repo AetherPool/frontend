@@ -2,8 +2,24 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
+
+    if (!isServer) {
+      // Silence common warnings
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        "@react-native-async-storage/async-storage": false,
+      };
+
+      // Suppress circular dependency warnings from WASM workers
+      config.ignoreWarnings = [
+        ...(config.ignoreWarnings || []),
+        /Circular dependency between chunks/,
+      ];
+    }
+
     return config;
   },
   env: {
