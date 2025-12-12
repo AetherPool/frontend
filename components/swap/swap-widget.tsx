@@ -15,9 +15,10 @@ import useGetQRTBalance from "@/hooks/Token/useGetQRTBalance";
 import useApproveTokens from "@/hooks/Liquidity/useApproveTokens";
 import useSwap from "@/hooks/Swap/useSwap";
 import useGetPoolPrice from "@/hooks/Liquidity/useGetPoolPrice";
-import useGetPoolLiquidity from "@/hooks/Liquidity/useGetPoolLiquidity";
+import useGetDynamicFee from "@/hooks/Swap/useGetDynamicFee";
 import { useAccount } from "wagmi";
 import { ethers } from "ethers";
+import useGetPoolLiquidity from "@/hooks/Liquidity/useGetPoolLiquidity";
 
 interface Token {
   symbol: string;
@@ -56,21 +57,25 @@ export function SwapWidget() {
   const [showError, setShowError] = useState(false);
 
   // Pool key configuration
-  const poolKey = useMemo(() => ({
-    currency0: QRT_ADDRESS,
-    currency1: FYN_ADDRESS,
-    fee: 8388608,
-    tickSpacing: 60,
-    hooks: HOOK_ADDRESS,
-  }), []);
+  const poolKey = useMemo(
+    () => ({
+      currency0: QRT_ADDRESS,
+      currency1: FYN_ADDRESS,
+      fee: 8388608,
+      tickSpacing: 60,
+      hooks: HOOK_ADDRESS,
+    }),
+    []
+  );
 
-  // Get current pool price and liquidity
+  // Get current pool price, liquidity, and dynamic fee
   const { price: poolPrice, refetch: refetchPrice } = useGetPoolPrice(poolKey);
   const { liquidity: poolLiquidityData, refetch: refetchLiquidity } =
     useGetPoolLiquidity(poolKey);
-  console.log("Pool Liquidity Data:", poolLiquidityData);
+  const { currentFee, feeLevel } = useGetDynamicFee();
 
-  const poolLiquidity = poolLiquidityData?.totalToken0 || 70000;
+  // Calculate fee percentage from basis points
+  const feePercentage = currentFee ? (currentFee / 10000) : 0.3;
 
   const getTokenBalance = (tokenSymbol: string): string => {
     if (!isConnected) return "0.0";
@@ -83,14 +88,13 @@ export function SwapWidget() {
     return "0.0";
   };
 
-  // Improved output and price impact calculation using actual pool price
+  // FIXED: Correct AMM price calculation using actual pool reserves
   useEffect(() => {
     if (
       !fromAmount ||
       Number.parseFloat(fromAmount) <= 0 ||
       !poolPrice ||
-      !poolLiquidity ||
-      poolLiquidity === 0
+      !poolLiquidityData
     ) {
       setTimeout(() => {
         setExpectedOutput(null);
@@ -103,36 +107,44 @@ export function SwapWidget() {
 
     const amount = Number.parseFloat(fromAmount);
 
-    // Use actual price ratio from the pool
-    const currentPriceRatio = poolPrice.ratio;
-
-    // Determine direction
+    // Determine which token is being sold
     const isToken0ToToken1 =
       fromToken.address.toLowerCase() === poolKey.currency0.toLowerCase();
 
-    // Calculate expected output using actual price
-    let expectedOut: number;
-    if (isToken0ToToken1) {
-      expectedOut = amount * currentPriceRatio;
-    } else {
-      expectedOut = amount / currentPriceRatio;
-    }
+    // Get ACTUAL pool reserves for BOTH tokens
+    const reserveIn = isToken0ToToken1
+      ? poolLiquidityData.totalToken0
+      : poolLiquidityData.totalToken1;
 
-    // Apply trading fee (0.3%)
-    const outputAfterFee = expectedOut * 0.997;
+    const reserveOut = isToken0ToToken1
+      ? poolLiquidityData.totalToken1
+      : poolLiquidityData.totalToken0;
 
-    // Calculate price impact using constant product formula
-    const k = poolLiquidity * poolLiquidity;
-    const newX = poolLiquidity + amount;
-    const newY = k / newX;
-    const actualOutput = poolLiquidity - newY;
-    const actualOutputAfterFee = actualOutput * 0.997;
+    // Apply trading fee to input amount (0.997 for 0.3% fee)
+    const feeMultiplier = 1 - feePercentage / 100;
+    const amountInWithFee = amount * feeMultiplier;
 
-    // Price impact is the difference between expected and actual
-    const impact = ((expectedOut - actualOutputAfterFee) / expectedOut) * 100;
+    // Constant product formula: (x + dx) * (y - dy) = x * y
+    // Solving for dy: dy = y * dx / (x + dx)
+    const numerator = reserveOut * amountInWithFee;
+    const denominator = reserveIn + amountInWithFee;
+    const actualOutput = numerator / denominator;
+
+    // Calculate expected output at current spot price (no slippage, no fee)
+    const spotPrice = poolPrice.ratio;
+    const expectedOutNoSlippage = isToken0ToToken1
+      ? amount * spotPrice
+      : amount / spotPrice;
+
+    // Expected output with fee but no price impact
+    const expectedOutWithFee = expectedOutNoSlippage * feeMultiplier;
+
+    // Price impact = difference between ideal output (with fee) and actual output
+    const impact =
+      ((expectedOutWithFee - actualOutput) / expectedOutWithFee) * 100;
 
     setTimeout(() => {
-      setExpectedOutput(actualOutputAfterFee);
+      setExpectedOutput(actualOutput);
       setPriceImpact(Math.max(0, impact));
     }, 0);
 
@@ -152,16 +164,16 @@ export function SwapWidget() {
   }, [
     fromAmount,
     slippageTolerance,
-    poolLiquidity,
     poolPrice,
+    poolLiquidityData,
     fromToken,
     toToken,
     poolKey,
+    feePercentage,
   ]);
 
   const getRecommendedSlippage = () => {
     if (!priceImpact) return slippageTolerance;
-    // Recommend slippage that's 50% higher than price impact, minimum 2%
     return Math.max(Math.ceil(priceImpact * 1.5 * 10) / 10, 2.0);
   };
 
@@ -196,9 +208,6 @@ export function SwapWidget() {
     try {
       // Convert amounts to wei (6 decimals)
       const amountInWei = ethers.parseUnits(fromAmount, 6).toString();
-
-      // Calculate minimum output with slippage protection
-      // Use the expected output and apply slippage tolerance
       const minOut = expectedOutput * (1 - slippageTolerance / 100);
       const minAmountOutWei = ethers
         .parseUnits(minOut.toFixed(6), 6)
@@ -211,7 +220,7 @@ export function SwapWidget() {
         slippageTolerance: slippageTolerance,
       });
 
-      // Step 1: Approve tokens
+      // Step 1: Approve tokens (with max approval for reduced transactions)
       const approved = await approveBothTokens(
         fromToken.address,
         toToken.address,
@@ -224,7 +233,7 @@ export function SwapWidget() {
         return;
       }
 
-      // Step 2: Execute swap with JIT preparation
+      // Step 2: Execute swap
       const result = await swap(
         {
           poolKey,
@@ -233,16 +242,14 @@ export function SwapWidget() {
           amountIn: amountInWei,
           minAmountOut: minAmountOutWei,
         },
-        slippageTolerance // Pass slippage for accurate calculation
+        slippageTolerance
       );
 
       if (result) {
-        // Reset form on success
         setFromAmount("");
         setExpectedOutput(null);
         setPriceImpact(null);
 
-        // Refetch balances and pool data
         setTimeout(() => {
           refetchPrice();
           refetchLiquidity();
@@ -261,16 +268,54 @@ export function SwapWidget() {
 
   const isProcessing = isApproving || isSwapping || isPreparingSwap;
 
+  // Calculate trade size percentage (only show if we have valid liquidity data)
+  const tradeSizePercentage = useMemo(() => {
+    if (!fromAmount || !poolLiquidityData) return null;
+
+    const amount = Number.parseFloat(fromAmount);
+    const isToken0 =
+      fromToken.address.toLowerCase() === QRT_ADDRESS.toLowerCase();
+    const liquidity = isToken0
+      ? poolLiquidityData.totalToken0
+      : poolLiquidityData.totalToken1;
+
+    if (!liquidity || liquidity === 0) return null;
+    return (amount / liquidity) * 100;
+  }, [fromAmount, poolLiquidityData, fromToken]);
+
+  // Get fee level badge
+  const getFeeLevelBadge = () => {
+    if (!feeLevel) return null;
+
+    const badges = {
+      HIGH_GAS: { text: "Low Fee", color: "bg-green-500/20 text-green-400" },
+      NORMAL: { text: "Normal Fee", color: "bg-blue-500/20 text-blue-400" },
+      LOW_GAS: { text: "High Fee", color: "bg-yellow-500/20 text-yellow-400" },
+    };
+
+    const badge = badges[feeLevel];
+    return (
+      <span
+        className={`px-2 py-1 rounded-md text-xs font-medium ${badge.color}`}
+      >
+        {badge.text}
+      </span>
+    );
+  };
+
   return (
     <div className="bg-linear-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 w-full max-w-md overflow-visible">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-white">Swap</h3>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
-        >
-          <Settings className="w-5 h-5 text-gray-400" />
-        </button>
+        <div className="flex items-center gap-2">
+          {getFeeLevelBadge()}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
+          >
+            <Settings className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
       </div>
 
       {showSettings && (
@@ -311,9 +356,16 @@ export function SwapWidget() {
           />
           <div className="mt-3 text-xs text-slate-400 space-y-1">
             <p>
-              • Slippage tolerance is the maximum price movement you&apos;ll accept
+              • Current network fee:{" "}
+              <span className="text-cyan-400 font-semibold">
+                {feePercentage.toFixed(2)}%
+              </span>{" "}
+              (dynamic)
             </p>
-            <p>• Higher slippage = higher chance of success but worse price</p>
+            <p>
+              • Slippage tolerance is the maximum price movement you&apos;ll
+              accept
+            </p>
             <p>• Recommended: 2-5% for JIT liquidity pools</p>
           </div>
         </div>
@@ -328,8 +380,7 @@ export function SwapWidget() {
                 Preparing JIT Liquidity
               </div>
               <div className="text-sm text-slate-300">
-                Decrypting LP configurations and preparing optimal liquidity...
-                This may take a few moments.
+                Checking eligible LPs and decrypting configurations...
               </div>
             </div>
           </div>
@@ -528,9 +579,8 @@ export function SwapWidget() {
               {showError && (
                 <div className="mt-3 pt-3 border-t border-red-800">
                   <p className="text-sm text-red-200 mb-2">
-                    <strong>Warning:</strong> Price impact (
-                    {priceImpact.toFixed(2)}%) exceeds slippage tolerance (
-                    {slippageTolerance}%).
+                    <strong>Warning:</strong> Price impact exceeds slippage
+                    tolerance.
                   </p>
                   <button
                     onClick={() =>
@@ -557,51 +607,64 @@ export function SwapWidget() {
         </div>
       )}
 
-      {fromAmount && expectedOutput && poolLiquidityData && (
+      {fromAmount && expectedOutput && poolPrice && (
         <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
           <h4 className="text-slate-300 font-medium mb-3">Swap Details</h4>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between text-slate-400">
-              <span>Pool Liquidity:</span>
-              <span className="text-white">
-                {poolLiquidityData.totalToken0.toLocaleString()}{" "}
-                {TOKENS[0].symbol} +{" "}
-                {poolLiquidityData.totalToken1.toLocaleString()}{" "}
-                {TOKENS[1].symbol}
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Your Trade Size:</span>
-              <span className="text-white">
-                {fromAmount || "0"} {fromToken.symbol} (
-                {(
-                  (Number.parseFloat(fromAmount || "0") / poolLiquidity) *
-                  100
-                ).toFixed(2)}
-                % of pool)
-              </span>
-            </div>
+            {/* Only show pool liquidity if we have valid data */}
+            {poolLiquidityData &&
+              poolLiquidityData.totalToken0 > 0 &&
+              poolLiquidityData.totalToken1 > 0 && (
+                <>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Pool Liquidity:</span>
+                    <span className="text-white">
+                      {poolLiquidityData.totalToken0.toLocaleString()}{" "}
+                      {TOKENS[0].symbol} /{" "}
+                      {poolLiquidityData.totalToken1.toLocaleString()}{" "}
+                      {TOKENS[1].symbol}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Active LPs:</span>
+                    <span className="text-white">
+                      {poolLiquidityData.lpCount}
+                    </span>
+                  </div>
+                </>
+              )}
+
+            {/* Only show trade size if we have valid percentage */}
+            {tradeSizePercentage !== null && (
+              <div className="flex justify-between text-slate-400">
+                <span>Your Trade Size:</span>
+                <span className="text-white">
+                  {fromAmount || "0"} {fromToken.symbol} (
+                  {tradeSizePercentage.toFixed(2)}%)
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between text-slate-400">
               <span>Current Price:</span>
               <span className="text-white">
-                {poolPrice
-                  ? `1 ${fromToken.symbol} = ${poolPrice.ratio.toFixed(6)} ${
-                      toToken.symbol
-                    }`
-                  : "Loading..."}
+                1 {fromToken.symbol} ≈ {poolPrice.ratio.toFixed(6)}{" "}
+                {toToken.symbol}
               </span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Execution Price:</span>
               <span className="text-white">
-                1 {fromToken.symbol} ={" "}
-                {(expectedOutput / Number.parseFloat(fromAmount)).toFixed(4)}{" "}
+                1 {fromToken.symbol} ≈{" "}
+                {(expectedOutput / Number.parseFloat(fromAmount)).toFixed(6)}{" "}
                 {toToken.symbol}
               </span>
             </div>
             <div className="flex justify-between text-slate-400">
               <span>Network Fee:</span>
-              <span className="text-white">0.3%</span>
+              <span className="text-white">
+                {feePercentage.toFixed(2)}% (dynamic)
+              </span>
             </div>
           </div>
         </div>
@@ -613,9 +676,9 @@ export function SwapWidget() {
           JIT Liquidity Integration
         </h4>
         <div className="text-xs text-slate-400 space-y-1">
-          <p>• Swap automatically detects and activates JIT liquidity</p>
-          <p>• LP configurations are decrypted before execution</p>
-          <p>• May take 10-30 seconds for JIT preparation</p>
+          <p>• Only LPs meeting minSwapSize threshold participate</p>
+          <p>• LP configurations are encrypted and verified before execution</p>
+          <p>• Preparation may take 10-30 seconds</p>
         </div>
       </div>
 
