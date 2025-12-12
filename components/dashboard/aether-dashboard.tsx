@@ -11,87 +11,6 @@ export function AetherDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Mock data
-  const stats = {
-    totalLiquidity: "$1,234,567",
-    activePositions: 5,
-    totalEarnings: "$12,345",
-    jitParticipations: 23,
-  };
-
-  const positions = [
-    {
-      id: 1,
-      pair: "QRT/FYN",
-      range: "0.95-1.05",
-      liquidity: "$50,000",
-      fees: "$234",
-      apy: "12.5%",
-      tokenA: {
-        symbol: "QRT",
-        amount: "25000",
-        price: 1.0,
-        profit: "125",
-        profitUsd: 125,
-      },
-      tokenB: {
-        symbol: "FYN",
-        amount: "25000",
-        price: 1.0,
-        profit: "125",
-        profitUsd: 125,
-      },
-      totalValue: "$50,000",
-    },
-    {
-      id: 2,
-      pair: "QRT/FYN",
-      range: "0.98-1.02",
-      liquidity: "$30,000",
-      fees: "$156",
-      apy: "18.2%",
-      tokenA: {
-        symbol: "QRT",
-        amount: "15000",
-        price: 1.0,
-        profit: "80",
-        profitUsd: 80,
-      },
-      tokenB: {
-        symbol: "FYN",
-        amount: "15000",
-        price: 1.0,
-        profit: "80",
-        profitUsd: 80,
-      },
-      totalValue: "$30,000",
-    },
-  ];
-
-  const recentJITs = [
-    {
-      time: "2m ago",
-      pair: "QRT/FYN",
-      amount: "$25,000",
-      profit: "+$127",
-      status: "completed",
-    },
-    {
-      time: "15m ago",
-      pair: "QRT/FYN",
-      amount: "$18,500",
-      profit: "+$94",
-      status: "completed",
-    },
-    {
-      time: "1h ago",
-      pair: "QRT/FYN",
-      amount: "$40,000",
-      profit: "+$203",
-      status: "completed",
-    },
-  ];
-
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "positions", label: "Positions", icon: Droplets },
@@ -109,11 +28,9 @@ export function AetherDashboard() {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === "overview" && (
-          <OverviewTab stats={stats} recentJITs={recentJITs} />
-        )}
-        {activeTab === "positions" && <PositionsTab positions={positions} />}
-        {activeTab === "jit" && <JITActivityTab recentJITs={recentJITs} />}
+        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "positions" && <PositionsTab />}
+        {activeTab === "jit" && <JITActivityTab />}
       </main>
     </div>
   );

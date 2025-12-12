@@ -122,8 +122,8 @@ const useGetLPPositions = (poolKey: PoolKey = DEFAULT_POOL_KEY) => {
 
       // Format positions
       const formattedPositions: Position[] = rawPositions
-        .filter((pos) => pos.isActive)
-        .map((pos, index) => {
+        .filter((pos: RawPosition) => pos.isActive)
+        .map((pos: RawPosition, index: number) => {
           const token0Amount = Number(formatUnits(pos.token0Amount, DECIMALS));
           const token1Amount = Number(formatUnits(pos.token1Amount, DECIMALS));
 
@@ -136,11 +136,11 @@ const useGetLPPositions = (poolKey: PoolKey = DEFAULT_POOL_KEY) => {
           const tickRange = `${Number(pos.tickLower)} to ${Number(
             pos.tickUpper
           )}`;
-          const tickWidth = Number(pos.tickUpper) - Number(pos.tickLower);
+        //   const tickWidth = Number(pos.tickUpper) - Number(pos.tickLower);
 
           // Distribute profits proportionally based on liquidity
           const totalLiquidity = rawPositions.reduce(
-            (sum, p) => sum + Number(p.liquidity),
+            (sum: number, p: RawPosition) => sum + Number(p.liquidity),
             0
           );
           const positionLiquidity = Number(pos.liquidity);
@@ -154,10 +154,10 @@ const useGetLPPositions = (poolKey: PoolKey = DEFAULT_POOL_KEY) => {
 
           // Calculate APY (simplified - based on profits vs deposited amounts)
           // This is a rough estimate
-          const daysActive = Math.max(
-            1,
-            (Date.now() / 1000 - Number(pos.depositTimestamp)) / 86400
-          );
+        //   const daysActive = Math.max(
+        //     1,
+        //     (Date.now() / 1000 - Number(pos.depositTimestamp)) / 86400
+        //   );
           const dailyReturn =
             totalValue > 0
               ? ((profit0 + profit1 * priceRatio) / totalValue) * 100

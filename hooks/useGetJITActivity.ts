@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import {
   getJITCoordinatorContract,
-  getProfitManagerContract,
 } from "@/constants/contracts";
 import { readOnlyProvider } from "@/constants/providers";
 import { formatUnits } from "ethers";
@@ -37,13 +36,13 @@ interface JITStats {
   weeklyChange: number;
 }
 
-const DEFAULT_POOL_KEY: PoolKey = {
-  currency0: process.env.QRT_TOKEN as string,
-  currency1: process.env.FYN_TOKEN as string,
-  fee: 8388608,
-  tickSpacing: 60,
-  hooks: process.env.HOOK as string,
-};
+// const DEFAULT_POOL_KEY: PoolKey = {
+//   currency0: process.env.QRT_TOKEN as string,
+//   currency1: process.env.FYN_TOKEN as string,
+//   fee: 8388608,
+//   tickSpacing: 60,
+//   hooks: process.env.HOOK as string,
+// };
 
 const DECIMALS = 6;
 
@@ -61,7 +60,7 @@ const formatTimestamp = (timestamp: number): string => {
   return date.toLocaleString();
 };
 
-export const useGetJITActivity = (poolKey: PoolKey = DEFAULT_POOL_KEY) => {
+export const useGetJITActivity = () => {
   const { address, isConnected } = useAccount();
   const [operations, setOperations] = useState<JITOperation[]>([]);
   const [stats, setStats] = useState<JITStats>({
@@ -90,7 +89,7 @@ export const useGetJITActivity = (poolKey: PoolKey = DEFAULT_POOL_KEY) => {
 
     try {
       const jitCoordinator = getJITCoordinatorContract(readOnlyProvider);
-      const profitManager = getProfitManagerContract(readOnlyProvider);
+    //   const profitManager = getProfitManagerContract(readOnlyProvider);
 
       // Get current swap ID to know the range
       const currentSwapId = await jitCoordinator.getNextSwapId();

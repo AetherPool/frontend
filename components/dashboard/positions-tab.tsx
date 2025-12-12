@@ -7,6 +7,7 @@ import {
   ArrowDownToLine,
   RefreshCw,
   Loader2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddPositionModal } from "@/components/modals/add-position-modal";
@@ -25,6 +26,9 @@ export function PositionsTab() {
     null
   );
   const [withdrawingToken, setWithdrawingToken] = useState<string | null>(null);
+  const [withdrawnTokens, setWithdrawnTokens] = useState<Set<string>>(
+    new Set()
+  );
 
   const handleManageClick = (position: Position) => {
     setSelectedPosition(position);
@@ -47,11 +51,18 @@ export function PositionsTab() {
     const success = await withdrawPartialProfits(amount0, amount1);
 
     if (success) {
-      // Refresh positions to update UI
+      // Mark this token as withdrawn
+      setWithdrawnTokens((prev) => new Set(prev).add(withdrawKey));
+
+      // Refresh positions after 2 seconds
       setTimeout(() => refetch(), 2000);
     }
 
     setWithdrawingToken(null);
+  };
+
+  const isTokenWithdrawn = (positionId: number, token: "tokenA" | "tokenB") => {
+    return withdrawnTokens.has(`${positionId}-${token}`);
   };
 
   if (!isConnected) {
@@ -222,11 +233,17 @@ export function PositionsTab() {
                             size="sm"
                             disabled={
                               isWithdrawing ||
-                              withdrawingToken === `${position.id}-tokenA`
+                              withdrawingToken === `${position.id}-tokenA` ||
+                              isTokenWithdrawn(position.id, "tokenA")
                             }
                             className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3 disabled:opacity-50"
                           >
-                            {withdrawingToken === `${position.id}-tokenA` ? (
+                            {isTokenWithdrawn(position.id, "tokenA") ? (
+                              <>
+                                <Check className="w-3 h-3 mr-1" />
+                                Withdrawn
+                              </>
+                            ) : withdrawingToken === `${position.id}-tokenA` ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
                               <>
@@ -259,11 +276,17 @@ export function PositionsTab() {
                             size="sm"
                             disabled={
                               isWithdrawing ||
-                              withdrawingToken === `${position.id}-tokenB`
+                              withdrawingToken === `${position.id}-tokenB` ||
+                              isTokenWithdrawn(position.id, "tokenB")
                             }
                             className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3 disabled:opacity-50"
                           >
-                            {withdrawingToken === `${position.id}-tokenB` ? (
+                            {isTokenWithdrawn(position.id, "tokenB") ? (
+                              <>
+                                <Check className="w-3 h-3 mr-1" />
+                                Withdrawn
+                              </>
+                            ) : withdrawingToken === `${position.id}-tokenB` ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
                               <>

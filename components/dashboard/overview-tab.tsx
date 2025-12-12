@@ -1,23 +1,22 @@
 "use client";
-import { Droplets, Activity, TrendingUp, Zap, Lock } from "lucide-react";
+import {
+  Droplets,
+  Activity,
+  TrendingUp,
+  Zap,
+  Lock,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useGetOverviewStats } from "@/hooks/useGetOverviewStats";
+import { useAccount } from "wagmi";
+import Link from "next/link";
 
-interface OverviewTabProps {
-  stats: {
-    totalLiquidity: string;
-    activePositions: number;
-    totalEarnings: string;
-    jitParticipations: number;
-  };
-  recentJITs: Array<{
-    time: string;
-    pair: string;
-    amount: string;
-    profit: string;
-    status: string;
-  }>;
-}
+export function OverviewTab() {
+  const { isConnected } = useAccount();
+  const { stats, recentJITs, isLoading, refetch } = useGetOverviewStats();
 
-export function OverviewTab({ stats, recentJITs }: OverviewTabProps) {
   const statItems = [
     {
       label: "Total Liquidity",
@@ -45,8 +44,40 @@ export function OverviewTab({ stats, recentJITs }: OverviewTabProps) {
     },
   ];
 
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <Activity className="w-16 h-16 text-gray-500" />
+        <h3 className="text-xl font-semibold text-gray-400">
+          Connect Wallet to View Overview
+        </h3>
+        <p className="text-gray-500 text-center max-w-md">
+          Connect your wallet to view your liquidity overview and statistics
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Portfolio Overview</h2>
+        <Button
+          onClick={refetch}
+          variant="ghost"
+          size="sm"
+          disabled={isLoading}
+          className="text-gray-400 hover:text-white"
+        >
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statItems.map((stat, idx) => {
           const Icon = stat.icon;
@@ -68,7 +99,7 @@ export function OverviewTab({ stats, recentJITs }: OverviewTabProps) {
                   {stat.value}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Performance metric
+                  Current metric
                 </div>
               </div>
             </div>
@@ -90,38 +121,56 @@ export function OverviewTab({ stats, recentJITs }: OverviewTabProps) {
               Latest liquidity opportunities
             </p>
           </div>
-          <button className="text-primary hover:text-accent text-sm font-medium transition-colors">
+          <Link
+            href="/dashboard/jit"
+            className="text-primary hover:text-accent text-sm font-medium transition-colors"
+          >
             View All →
-          </button>
+          </Link>
         </div>
-        <div className="space-y-3">
-          {recentJITs.map((jit, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between p-4 bg-background/40 border border-border/30 rounded-lg hover:bg-background/60 hover:border-border/60 transition-all"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="p-2.5 bg-primary/15 rounded-lg shrink-0">
-                  <Zap className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-foreground">
-                    {jit.pair}
+
+        {isLoading && recentJITs.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : recentJITs.length === 0 ? (
+          <div className="text-center py-8">
+            <Zap className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              No JIT operations yet. Configure JIT settings to start
+              participating.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentJITs.map((jit, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-4 bg-background/40 border border-border/30 rounded-lg hover:bg-background/60 hover:border-border/60 transition-all"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="p-2.5 bg-primary/15 rounded-lg shrink-0">
+                    <Zap className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {jit.time} • {jit.amount}
+                  <div className="min-w-0">
+                    <div className="font-semibold text-foreground">
+                      {jit.pair}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {jit.time} • {jit.amount}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-semibold text-primary">{jit.profit}</div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {jit.status}
                   </div>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <div className="font-semibold text-primary">{jit.profit}</div>
-                <div className="text-xs text-muted-foreground capitalize">
-                  {jit.status}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Privacy Features Highlight */}
