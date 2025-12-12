@@ -12,31 +12,46 @@ import { Button } from "@/components/ui/button";
 import { AddPositionModal } from "@/components/modals/add-position-modal";
 import { ManagePositionModal } from "@/components/modals/manage-position-modal";
 import useGetLPPositions, { Position } from "@/hooks/useGetLPPositions";
+import { useWithdrawProfits } from "@/hooks/useWithdrawProfits";
 import { useAccount } from "wagmi";
 
 export function PositionsTab() {
   const { isConnected } = useAccount();
   const { positions, isLoading, refetch } = useGetLPPositions();
+  const { withdrawPartialProfits, isWithdrawing } = useWithdrawProfits();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(
     null
   );
+  const [withdrawingToken, setWithdrawingToken] = useState<string | null>(null);
 
   const handleManageClick = (position: Position) => {
     setSelectedPosition(position);
     setManageModalOpen(true);
   };
 
-  const handleWithdrawProfit = (
+  const handleWithdrawProfit = async (
     position: Position,
     token: "tokenA" | "tokenB"
   ) => {
     const tokenData = position[token];
-    console.log(
-      `Withdrawing ${tokenData.profit} ${tokenData.symbol} profit from position ${position.id}`
-    );
-    // This would trigger the actual withdrawal transaction
+    const withdrawKey = `${position.id}-${token}`;
+
+    setWithdrawingToken(withdrawKey);
+
+    // Determine amounts to withdraw
+    const amount0 = token === "tokenA" ? tokenData.profit || "0" : "0";
+    const amount1 = token === "tokenB" ? tokenData.profit || "0" : "0";
+
+    const success = await withdrawPartialProfits(amount0, amount1);
+
+    if (success) {
+      // Refresh positions to update UI
+      setTimeout(() => refetch(), 2000);
+    }
+
+    setWithdrawingToken(null);
   };
 
   if (!isConnected) {
@@ -205,10 +220,20 @@ export function PositionsTab() {
                               handleWithdrawProfit(position, "tokenA")
                             }
                             size="sm"
-                            className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3"
+                            disabled={
+                              isWithdrawing ||
+                              withdrawingToken === `${position.id}-tokenA`
+                            }
+                            className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3 disabled:opacity-50"
                           >
-                            <ArrowDownToLine className="w-3 h-3 mr-1" />
-                            Withdraw
+                            {withdrawingToken === `${position.id}-tokenA` ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <ArrowDownToLine className="w-3 h-3 mr-1" />
+                                Withdraw
+                              </>
+                            )}
                           </Button>
                         </div>
                       )}
@@ -232,10 +257,20 @@ export function PositionsTab() {
                               handleWithdrawProfit(position, "tokenB")
                             }
                             size="sm"
-                            className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3"
+                            disabled={
+                              isWithdrawing ||
+                              withdrawingToken === `${position.id}-tokenB`
+                            }
+                            className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs px-3 disabled:opacity-50"
                           >
-                            <ArrowDownToLine className="w-3 h-3 mr-1" />
-                            Withdraw
+                            {withdrawingToken === `${position.id}-tokenB` ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <ArrowDownToLine className="w-3 h-3 mr-1" />
+                                Withdraw
+                              </>
+                            )}
                           </Button>
                         </div>
                       )}
