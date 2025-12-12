@@ -10,7 +10,7 @@ interface Token {
   symbol: string;
   name: string;
   balance: string;
-  price: number;
+  address: string;
 }
 
 interface PositionData {
